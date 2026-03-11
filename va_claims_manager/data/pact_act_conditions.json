@@ -1,0 +1,113 @@
+{
+  "burn_pit_cancers": {
+    "label": "PACT Act — Burn Pit / Toxic Exposure (Post-9/11 & Gulf War)",
+    "exposure_eras": ["Post-9/11 (Sep 2001-present)", "Gulf War (1990-present)"],
+    "conditions": [
+      "Brain cancer",
+      "Glioblastoma",
+      "Gastrointestinal cancers (any type)",
+      "Head and Neck cancers (any type)",
+      "Reproductive cancers (any type)",
+      "Kidney cancer",
+      "Pancreatic cancer",
+      "Lymphoma (any type)",
+      "Multiple myeloma",
+      "Melanoma",
+      "Urinary tract cancer",
+      "Thyroid cancer",
+      "Squamous cell carcinoma of the head or neck"
+    ]
+  },
+  "burn_pit_respiratory": {
+    "label": "PACT Act — Respiratory Conditions (Burn Pit / Toxic Exposure)",
+    "exposure_eras": ["Post-9/11 (Sep 2001-present)", "Gulf War (1990-present)"],
+    "conditions": [
+      "Asthma (diagnosed after service)",
+      "Chronic bronchitis",
+      "COPD (Chronic Obstructive Pulmonary Disease)",
+      "Emphysema",
+      "Pulmonary fibrosis",
+      "Chronic rhinitis",
+      "Chronic sinusitis",
+      "Chronic laryngitis",
+      "Interstitial lung disease (ILD)",
+      "Sarcoidosis",
+      "Granulomatous disease",
+      "Constrictive bronchiolitis",
+      "Obliterative bronchiolitis"
+    ]
+  },
+  "agent_orange": {
+    "label": "Agent Orange Presumptives (Vietnam Era)",
+    "exposure_eras": ["Vietnam (1964-1975)"],
+    "conditions": [
+      "AL Amyloidosis",
+      "Chloracne",
+      "Type 2 Diabetes (Diabetes Mellitus Type 2)",
+      "Hodgkin's disease",
+      "Ischemic heart disease",
+      "Multiple myeloma",
+      "Non-Hodgkin's lymphoma",
+      "Parkinson's disease",
+      "Peripheral neuropathy (early-onset)",
+      "Porphyria cutanea tarda",
+      "Prostate cancer",
+      "Respiratory cancers (bronchus, lung, larynx, trachea)",
+      "Soft tissue sarcomas (other than osteosarcoma, chondrosarcoma, Kaposi's sarcoma)",
+      "Hypertension (PACT Act addition)",
+      "Monoclonal Gammopathy of Undetermined Significance (MGUS)",
+      "Bladder cancer (PACT Act addition)",
+      "Hypothyroidism (PACT Act addition)"
+    ]
+  },
+  "gulf_war_illness": {
+    "label": "Gulf War Illness — Medically Unexplained Chronic Multi-Symptom Illnesses",
+    "exposure_eras": ["Gulf War (1990-present)"],
+    "conditions": [
+      "Chronic Fatigue Syndrome (CFS)",
+      "Fibromyalgia",
+      "Irritable Bowel Syndrome (IBS)",
+      "Functional gastrointestinal disorders",
+      "Any diagnosed illness without a clear cause (Gulf War Veterans)"
+    ]
+  },
+  "gulf_war_infectious": {
+    "label": "Gulf War — Infectious Diseases (within 1 year of separation)",
+    "exposure_eras": ["Gulf War (1990-present)"],
+    "conditions": [
+      "Brucellosis",
+      "Campylobacter jejuni",
+      "Coxiella burnetii (Q fever)",
+      "Malaria",
+      "Mycobacterium tuberculosis",
+      "Nontyphoid Salmonella",
+      "Shigella",
+      "Visceral leishmaniasis",
+      "West Nile Virus"
+    ]
+  },
+  "radiation": {
+    "label": "Radiation Exposure Presumptives",
+    "exposure_eras": ["Korea (1950-1955)", "WWII (1941-1946)", "Cold War (1947-1991)"],
+    "conditions": [
+      "All cancers (for certain radiation risk activities)",
+      "Leukemia (other than chronic lymphocytic leukemia)",
+      "Thyroid cancer",
+      "Breast cancer",
+      "Esophageal cancer",
+      "Stomach cancer",
+      "Pharyngeal cancer",
+      "Small intestine cancer",
+      "Pancreatic cancer",
+      "Multiple myeloma",
+      "Lymphoma (except Hodgkin's disease)",
+      "Urinary tract cancers",
+      "Salivary gland cancer",
+      "Bone cancer",
+      "Brain cancer",
+      "Colon cancer",
+      "Lung cancer",
+      "Ovarian cancer"
+    ]
+  }
+}

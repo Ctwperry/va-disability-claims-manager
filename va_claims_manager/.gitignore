@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+.venv/
+venv/
+env/
+
+# SQLite database (contains personal data — never commit)
+data/va_claims.db
+data/va_claims.db-shm
+data/va_claims.db-wal
+
+# Export output
+data/exports/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.suo
+*.user
+
+# PyInstaller
+*.spec
+dist/
