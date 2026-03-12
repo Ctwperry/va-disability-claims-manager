@@ -15,6 +15,7 @@ from PyQt6.QtWidgets import QCompleter
 from app.config import BODY_SYSTEMS, CLAIM_TYPES, VASRD_CODES_PATH
 from app.core.claim import Claim
 from app.ui.widgets.triangle_widget import TriangleWidget
+from app.ui.dialogs.cp_prep_dialog import CPPrepDialog
 import app.db.repositories.claim_repo as claim_repo
 import app.db.repositories.document_repo as doc_repo
 
@@ -103,6 +104,13 @@ class ClaimPanel(QWidget):
         status_row.addWidget(self._status_badge)
         status_row.addStretch()
 
+        self._btn_cp_prep = QPushButton("C&P Exam Prep")
+        self._btn_cp_prep.setFixedWidth(130)
+        self._btn_cp_prep.setToolTip("Generate a C&P exam preparation sheet for this claim")
+        self._btn_cp_prep.setVisible(False)
+        self._btn_cp_prep.clicked.connect(self._on_cp_prep)
+        status_row.addWidget(self._btn_cp_prep)
+
         self._btn_delete_claim = QPushButton("Delete Claim")
         self._btn_delete_claim.setObjectName("danger_btn")
         self._btn_delete_claim.setFixedWidth(110)
@@ -188,6 +196,39 @@ class ClaimPanel(QWidget):
         row5.addStretch()
         info_form.addLayout(row5)
 
+        # ---- Effective Date ----
+        eff_row = QHBoxLayout()
+        eff_lbl = QLabel("Effective Date")
+        eff_lbl.setToolTip(
+            "The date from which back pay is calculated.\n"
+            "Can be the ITF filing date, date of first treatment, date of claim, or separation date."
+        )
+        eff_row.addWidget(eff_lbl)
+        self._effective_date = QLineEdit()
+        self._effective_date.setPlaceholderText("YYYY-MM-DD")
+        self._effective_date.setFixedWidth(130)
+        eff_row.addWidget(self._effective_date)
+
+        eff_basis_lbl = QLabel("  Basis:")
+        eff_row.addWidget(eff_basis_lbl)
+        self._effective_date_basis = QComboBox()
+        for basis in [
+            "",
+            "Date of claim submission",
+            "ITF (Intent to File) date",
+            "Date of first treatment / STR entry",
+            "Date of disability onset",
+            "Date of separation from service",
+            "Presumptive: within 1 year of separation",
+            "PACT Act enactment (Aug 10, 2022)",
+            "Other / Custom",
+        ]:
+            self._effective_date_basis.addItem(basis, basis)
+        self._effective_date_basis.setFixedWidth(280)
+        eff_row.addWidget(self._effective_date_basis)
+        eff_row.addStretch()
+        info_form.addLayout(eff_row)
+
         rv.addWidget(info_card)
 
         # ---- Caluza Triangle ----
@@ -246,6 +287,24 @@ class ClaimPanel(QWidget):
         nexus_row.addWidget(self._nexus_type_combo)
         nexus_row.addStretch()
         leg3_inner.addLayout(nexus_row)
+
+        # Secondary condition picker (shown only when nexus_type == "secondary")
+        self._secondary_widget = QWidget()
+        secondary_row = QHBoxLayout(self._secondary_widget)
+        secondary_row.setContentsMargins(0, 0, 0, 0)
+        sec_lbl = QLabel("Secondary to:")
+        sec_lbl.setToolTip("Select the primary service-connected condition this claim is secondary to")
+        secondary_row.addWidget(sec_lbl)
+        self._secondary_combo = QComboBox()
+        self._secondary_combo.setFixedWidth(340)
+        self._secondary_combo.setToolTip("The service-connected condition that caused or aggravated this one")
+        secondary_row.addWidget(self._secondary_combo)
+        secondary_row.addStretch()
+        self._secondary_widget.setVisible(False)
+        leg3_inner.addWidget(self._secondary_widget)
+
+        self._nexus_type_combo.currentIndexChanged.connect(self._on_nexus_type_changed)
+
         leg3_inner.addWidget(self._nexus_verified)
         rv.addWidget(self._leg3)
 
@@ -317,6 +376,7 @@ class ClaimPanel(QWidget):
         self._veteran_id = veteran_id
         self._current_claim_id = None
         self._refresh_list()
+        self._refresh_secondary_options()
         self._clear_editor()
 
     # ------------------------------------------------------------------
@@ -419,6 +479,33 @@ class ClaimPanel(QWidget):
     def _on_claim_type_changed(self):
         is_presumptive = self._claim_type.currentData() == "presumptive"
         self._presumptive_widget.setVisible(is_presumptive)
+
+    def _on_nexus_type_changed(self):
+        is_secondary = self._nexus_type_combo.currentData() == "secondary"
+        self._secondary_widget.setVisible(is_secondary)
+
+    def _refresh_secondary_options(self, exclude_id: int | None = None):
+        """Repopulate the secondary-to dropdown with other claims for this veteran."""
+        self._secondary_combo.blockSignals(True)
+        self._secondary_combo.clear()
+        self._secondary_combo.addItem("-- Select primary condition --", None)
+        if self._veteran_id:
+            for c in claim_repo.get_all(self._veteran_id):
+                if c.id != exclude_id:
+                    label = f"{c.condition_name}"
+                    if c.vasrd_code:
+                        label += f"  (DC {c.vasrd_code})"
+                    self._secondary_combo.addItem(label, c.id)
+        self._secondary_combo.blockSignals(False)
+
+    def _on_cp_prep(self):
+        """Open the C&P Exam Prep sheet for the currently loaded claim."""
+        if self._current_claim_id is None:
+            return
+        claim = claim_repo.get_by_id(self._current_claim_id)
+        if claim:
+            dlg = CPPrepDialog(claim, parent=self)
+            dlg.exec()
 
     @staticmethod
     def _load_vasrd() -> list[dict]:
@@ -735,6 +822,21 @@ class ClaimPanel(QWidget):
         self._nexus_verified.setChecked(claim.nexus_language_verified)
 
         self._notes.setPlainText(claim.notes)
+
+        # Effective date
+        self._effective_date.setText(claim.effective_date or "")
+        self._set_combo(self._effective_date_basis, claim.effective_date_basis or "")
+
+        # Secondary condition
+        self._refresh_secondary_options(exclude_id=claim.id)
+        self._set_combo(self._nexus_type_combo, claim.nexus_type)  # re-set after refresh
+        is_secondary = claim.nexus_type == "secondary"
+        self._secondary_widget.setVisible(is_secondary)
+        if is_secondary and claim.secondary_to_claim_id:
+            idx = self._secondary_combo.findData(claim.secondary_to_claim_id)
+            if idx >= 0:
+                self._secondary_combo.setCurrentIndex(idx)
+
         self._update_triangle_preview()
         self._update_risk_labels(claim)
         self._load_evidence(claim.id)
@@ -749,6 +851,7 @@ class ClaimPanel(QWidget):
         )
         self._btn_save.setEnabled(True)
         self._btn_delete_claim.setVisible(True)
+        self._btn_cp_prep.setVisible(True)
 
     def _clear_editor(self):
         self._current_claim_id = None
@@ -758,7 +861,8 @@ class ClaimPanel(QWidget):
         self._condition_name.blockSignals(False)
         for w in [self._vasrd_code, self._presumptive_basis,
                   self._diag_source, self._diag_date, self._insvc_source,
-                  self._insvc_date, self._nexus_source, self._nexus_date]:
+                  self._insvc_date, self._nexus_source, self._nexus_date,
+                  self._effective_date]:
             w.clear()
         self._vasrd_hint.clear()
         self._insvc_description.clear()
@@ -771,10 +875,14 @@ class ClaimPanel(QWidget):
         self._body_system.setCurrentIndex(0)
         self._claim_type.setCurrentIndex(0)
         self._nexus_type_combo.setCurrentIndex(0)
+        self._effective_date_basis.setCurrentIndex(0)
+        self._secondary_widget.setVisible(False)
+        self._secondary_combo.setCurrentIndex(0)
         self._triangle.set_state(False, False, False)
         self._status_badge.setText("")
         self._btn_save.setEnabled(False)
         self._btn_delete_claim.setVisible(False)
+        self._btn_cp_prep.setVisible(False)
 
     # ------------------------------------------------------------------
     # Slots
@@ -804,6 +912,12 @@ class ClaimPanel(QWidget):
             QMessageBox.warning(self, "Validation", "Condition name is required.")
             return
 
+        secondary_id = (
+            self._secondary_combo.currentData()
+            if self._nexus_type_combo.currentData() == "secondary"
+            else None
+        )
+
         c = Claim(
             id=self._current_claim_id,
             veteran_id=self._veteran_id,
@@ -825,6 +939,9 @@ class ClaimPanel(QWidget):
             nexus_language_verified=self._nexus_verified.isChecked(),
             priority_rating=self._priority_rating.value() or None,
             notes=self._notes.toPlainText().strip(),
+            effective_date=self._effective_date.text().strip(),
+            effective_date_basis=self._effective_date_basis.currentData() or "",
+            secondary_to_claim_id=secondary_id,
         )
         c.compute_risks()
 
@@ -838,6 +955,8 @@ class ClaimPanel(QWidget):
         self._claim_title.setText(c.condition_name)
         self._update_risk_labels(c)
         self._refresh_list()
+        self._refresh_secondary_options(exclude_id=self._current_claim_id)
+        self._btn_cp_prep.setVisible(True)
         self.claims_updated.emit()
 
     def _on_delete_claim(self):

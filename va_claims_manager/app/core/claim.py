@@ -38,6 +38,11 @@ class Claim:
     notes: str = ""
     created_at: str = ""
     updated_at: str = ""
+    # Effective date tracking (v2)
+    effective_date: str = ""
+    effective_date_basis: str = ""
+    # Secondary condition linking (v2)
+    secondary_to_claim_id: Optional[int] = None
 
     @property
     def triangle_complete(self) -> bool:
@@ -80,11 +85,15 @@ class Claim:
             self.risk_negative_cp_likely = False
         # Form correctness (basic check)
         self.risk_wrong_form = (self.claim_type == "tdiu" and not self.has_diagnosis)
-        # Continuity risk if no in-service event linked
-        self.risk_no_continuity = (not self.has_inservice_event)
+        # Continuity risk — secondary claims don't need their own in-service event
+        if self.nexus_type == "secondary" and self.secondary_to_claim_id:
+            self.risk_no_continuity = False
+        else:
+            self.risk_no_continuity = not self.has_inservice_event
 
     @classmethod
     def from_row(cls, row) -> "Claim":
+        keys = row.keys()
         return cls(
             id=row["id"],
             veteran_id=row["veteran_id"],
@@ -113,4 +122,8 @@ class Claim:
             notes=row["notes"] or "",
             created_at=row["created_at"] or "",
             updated_at=row["updated_at"] or "",
+            # v2 columns — may not exist in older DBs (migration handles it)
+            effective_date=row["effective_date"] if "effective_date" in keys else "",
+            effective_date_basis=row["effective_date_basis"] if "effective_date_basis" in keys else "",
+            secondary_to_claim_id=row["secondary_to_claim_id"] if "secondary_to_claim_id" in keys else None,
         )

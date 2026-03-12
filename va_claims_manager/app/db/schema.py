@@ -8,7 +8,7 @@ from app.db.connection import get_connection
 
 log = logging.getLogger(__name__)
 
-CURRENT_VERSION = 1
+CURRENT_VERSION = 2
 
 # ---------------------------------------------------------------------------
 # DDL Statements
@@ -199,7 +199,7 @@ CREATE TABLE IF NOT EXISTS app_settings (
 """
 
 _DEFAULT_SETTINGS = [
-    ("db_version", str(CURRENT_VERSION)),
+    ("db_version", "1"),  # Start at 1; migrations bump this
     ("tesseract_path", r"C:\Program Files\Tesseract-OCR\tesseract.exe"),
     ("default_export_dir", ""),
     ("active_veteran_id", ""),
@@ -241,6 +241,12 @@ def initialize_database():
                     (key, value),
                 )
         log.info("Database initialized successfully at %s", conn)
+
+        # Run any pending schema migrations
+        current_ver = int(get_setting("db_version", "1") or "1")
+        if current_ver < CURRENT_VERSION:
+            _run_migrations(conn, current_ver)
+
     except Exception as exc:
         log.exception("Failed to initialize database: %s", exc)
         raise
@@ -261,6 +267,39 @@ def set_setting(key: str, value: str):
             "INSERT OR REPLACE INTO app_settings (key, value) VALUES (?, ?)",
             (key, value),
         )
+
+
+# ---------------------------------------------------------------------------
+# Migrations
+# ---------------------------------------------------------------------------
+
+def _run_migrations(conn: "sqlite3.Connection", from_version: int):
+    """Apply incremental schema migrations. Each migration is idempotent."""
+    log.info("Running DB migrations from version %d to %d", from_version, CURRENT_VERSION)
+
+    if from_version < 2:
+        # v2: effective date tracking + secondary condition linking
+        _alter_safe(conn, "ALTER TABLE claims ADD COLUMN effective_date TEXT DEFAULT ''")
+        _alter_safe(conn, "ALTER TABLE claims ADD COLUMN effective_date_basis TEXT DEFAULT ''")
+        _alter_safe(conn, (
+            "ALTER TABLE claims ADD COLUMN secondary_to_claim_id INTEGER "
+            "REFERENCES claims(id) ON DELETE SET NULL"
+        ))
+        with conn:
+            conn.execute("UPDATE app_settings SET value='2' WHERE key='db_version'")
+        log.info("Migrated to DB version 2")
+
+
+def _alter_safe(conn, sql: str):
+    """Run an ALTER TABLE statement, ignoring 'duplicate column' errors."""
+    try:
+        with conn:
+            conn.execute(sql)
+    except Exception as exc:
+        if "duplicate column" in str(exc).lower():
+            pass  # Column already exists — safe to ignore
+        else:
+            raise
 
 
 # ---------------------------------------------------------------------------

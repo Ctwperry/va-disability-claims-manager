@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Read(//c/Users/Ctwpe/AppData/Local/Programs/Python//**)",
+      "Bash(ls /c/Python*)",
+      "Read(//c/Users/Ctwpe/AppData/Local//**)",
+      "Bash(\"/c/Users/Ctwpe/AppData/Local/Programs/Python/Python314/python.exe\" --version)",
+      "Bash(PYTHON=\"/c/Users/Ctwpe/AppData/Local/Programs/Python/Python314/python.exe\")",
+      "Bash(\"$PYTHON\" -m pip install PyQt6 pdfplumber pypdf reportlab pdfrw python-docx pytesseract Pillow opencv-python-headless python-dateutil rapidfuzz)",
+      "Bash(\"/c/Users/Ctwpe/AppData/Local/Programs/Python/Python314/python.exe\" -m pip install PyQt6 pdfplumber pypdf reportlab pdfrw \"python-docx\" pytesseract Pillow opencv-python-headless python-dateutil rapidfuzz)",
+      "Bash(\"/c/Users/Ctwpe/AppData/Local/Programs/Python/Python314/python.exe\" -m ensurepip --upgrade)",
+      "Bash(\"/c/Users/Ctwpe/AppData/Local/Programs/Python/Python314/python.exe\" -m pip --version)",
+      "Bash(git --version)",
+      "Bash(gh --version)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo:*)",
+      "Bash(winget list:*)",
+      "Read(//c/Program Files/Tesseract-OCR/**)",
+      "Bash(winget install:*)",
+      "Bash(\"/c/Program Files/Tesseract-OCR/tesseract.exe\" --version)",
+      "Bash(C:UsersCtwpeAppDataLocalProgramsPythonPython314python.exe -c \":*)"
+    ]
+  }
+}
