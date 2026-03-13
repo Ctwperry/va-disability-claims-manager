@@ -9,7 +9,6 @@ Features:
   - One-click "Add Claim" to create a claim from any condition
 """
 from __future__ import annotations
-import json
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QFrame,
@@ -20,8 +19,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 
-from app.config import VASRD_CODES_PATH
-from app.analysis.presumptive_data import enrich_vasrd_conditions
+from app.services.conditions_service import load_enriched_conditions
 import app.db.repositories.claim_repo as claim_repo
 
 
@@ -183,14 +181,8 @@ class ConditionsBrowserPanel(QWidget):
     # ------------------------------------------------------------------
 
     def _load_conditions(self):
-        """Load VASRD codes, enrich with presumptive data, populate table."""
-        try:
-            with open(VASRD_CODES_PATH) as f:
-                raw = json.load(f).get("codes", [])
-        except Exception:
-            raw = []
-
-        self._all_conditions = enrich_vasrd_conditions(raw)
+        """Load VASRD codes enriched with presumptive data, populate table."""
+        self._all_conditions = load_enriched_conditions()
 
         # Collect unique body systems
         systems = sorted(set(c.get("system", "Other") for c in self._all_conditions))

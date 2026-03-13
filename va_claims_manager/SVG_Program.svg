@@ -1,0 +1,409 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 1860" font-family="'Segoe UI', Arial, sans-serif">
+  <defs>
+    <marker id="arr" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#58a6ff"/>
+    </marker>
+    <marker id="arr-purple" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#bc8cff"/>
+    </marker>
+    <marker id="arr-green" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto">
+      <polygon points="0 0, 8 3, 0 6" fill="#3fb950"/>
+    </marker>
+  </defs>
+
+  <!-- ═══ BACKGROUND ═══ -->
+  <rect width="960" height="1860" fill="#0d1117"/>
+
+  <!-- ═══ HEADER ═══ -->
+  <rect x="0" y="0" width="960" height="65" fill="#161b22"/>
+  <rect x="0" y="0" width="960" height="3" fill="#388bfd"/>
+  <text x="480" y="29" text-anchor="middle" font-size="20" font-weight="bold" fill="white">VA Disability Claims Manager</text>
+  <text x="480" y="52" text-anchor="middle" font-size="13" fill="#8b949e">Data Flow &amp; System Architecture</text>
+
+  <!-- Objective banner -->
+  <rect x="20" y="75" width="920" height="38" rx="5" fill="#161b22" stroke="#2ea44f" stroke-width="1"/>
+  <text x="480" y="91" text-anchor="middle" font-size="11" font-weight="bold" fill="#3fb950">OBJECTIVE</text>
+  <text x="480" y="107" text-anchor="middle" font-size="11" fill="#8b949e">Help veterans build legally-complete VA disability claims using the Caluza Triangle: Diagnosis + In-Service Event + Nexus</text>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 1: INPUTS                       -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="125" width="960" height="22" fill="#2ea44f" opacity="0.15"/>
+  <rect x="0" y="125" width="4" height="22" fill="#2ea44f"/>
+  <text x="15" y="141" font-size="11" font-weight="bold" letter-spacing="1" fill="#3fb950">INPUTS</text>
+
+  <!-- Source box: Files -->
+  <rect x="20" y="157" width="270" height="62" rx="5" fill="#161b22" stroke="#2ea44f" stroke-width="1.5"/>
+  <text x="155" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#3fb950">PDF / DOCX / Images</text>
+  <text x="155" y="191" text-anchor="middle" font-size="10" fill="#8b949e">Medical records, DD-214, nexus letters</text>
+  <text x="155" y="206" text-anchor="middle" font-size="10" fill="#8b949e">VA decisions, service treatment records</text>
+
+  <!-- Source box: Veteran Profile -->
+  <rect x="340" y="157" width="270" height="62" rx="5" fill="#161b22" stroke="#2ea44f" stroke-width="1.5"/>
+  <text x="475" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#3fb950">Veteran Profile</text>
+  <text x="475" y="191" text-anchor="middle" font-size="10" fill="#8b949e">Name, SSN, branch, service dates</text>
+  <text x="475" y="206" text-anchor="middle" font-size="10" fill="#8b949e">discharge type, era, DD-214 status</text>
+
+  <!-- Source box: Reference Data -->
+  <rect x="660" y="157" width="280" height="62" rx="5" fill="#161b22" stroke="#2ea44f" stroke-width="1.5"/>
+  <text x="800" y="175" text-anchor="middle" font-size="12" font-weight="bold" fill="#3fb950">Static Reference Data</text>
+  <text x="800" y="191" text-anchor="middle" font-size="10" fill="#8b949e">vasrd_codes.json</text>
+  <text x="800" y="206" text-anchor="middle" font-size="10" fill="#8b949e">pact_act_conditions.json</text>
+
+  <!-- Arrows: source boxes to UI panels -->
+  <line x1="155" y1="219" x2="155" y2="243" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="475" y1="219" x2="475" y2="243" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="800" y="234" text-anchor="middle" font-size="10" fill="#8b949e" font-style="italic">loaded at startup via config.py</text>
+
+  <!-- UI Panels -->
+  <rect x="20" y="243" width="270" height="40" rx="5" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="155" y="259" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">app/ui · DocumentPanel</text>
+  <text x="155" y="274" text-anchor="middle" font-size="10" fill="#8b949e">drag-and-drop file upload + progress</text>
+
+  <rect x="340" y="243" width="270" height="40" rx="5" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+  <text x="475" y="259" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">app/ui · VeteranPanel</text>
+  <text x="475" y="274" text-anchor="middle" font-size="10" fill="#8b949e">profile form entry + service history</text>
+
+  <!-- Converging arrows down to ingestion -->
+  <line x1="155" y1="283" x2="155" y2="310" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="475" y1="283" x2="475" y2="310" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="155" y1="310" x2="475" y2="310" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="315" y1="310" x2="315" y2="330" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 2: INGESTION PIPELINE           -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="340" width="960" height="22" fill="#d29922" opacity="0.15"/>
+  <rect x="0" y="340" width="4" height="22" fill="#d29922"/>
+  <text x="15" y="356" font-size="11" font-weight="bold" letter-spacing="1" fill="#d29922">INGESTION PIPELINE   app/ingestion/pipeline.py</text>
+
+  <!-- Hash Check -->
+  <rect x="310" y="372" width="310" height="38" rx="5" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+  <text x="465" y="388" text-anchor="middle" font-size="11" font-weight="bold" fill="#d29922">SHA-256 Hash Check</text>
+  <text x="465" y="403" text-anchor="middle" font-size="10" fill="#8b949e">deduplication — skip if already imported</text>
+
+  <!-- Arrow from hash check down -->
+  <line x1="465" y1="410" x2="465" y2="428" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Branch split: PDF left, DOCX right -->
+  <line x1="465" y1="428" x2="200" y2="428" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="465" y1="428" x2="730" y2="428" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="200" y1="428" x2="200" y2="447" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+  <line x1="730" y1="428" x2="730" y2="447" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+  <text x="200" y="443" text-anchor="middle" font-size="10" fill="#8b949e">PDF</text>
+  <text x="730" y="443" text-anchor="middle" font-size="10" fill="#8b949e">DOCX</text>
+
+  <!-- PDF box -->
+  <rect x="80" y="447" width="240" height="55" rx="5" fill="#161b22" stroke="#d29922" stroke-width="1"/>
+  <text x="200" y="464" text-anchor="middle" font-size="11" font-weight="bold" fill="#d29922">pdf_extractor.py</text>
+  <text x="200" y="479" text-anchor="middle" font-size="10" fill="#8b949e">pdfplumber text extraction</text>
+  <text x="200" y="493" text-anchor="middle" font-size="10" fill="#8b949e">&lt;50 chars/page → OCR fallback</text>
+
+  <!-- DOCX box -->
+  <rect x="610" y="447" width="240" height="55" rx="5" fill="#161b22" stroke="#d29922" stroke-width="1"/>
+  <text x="730" y="464" text-anchor="middle" font-size="11" font-weight="bold" fill="#d29922">docx_extractor.py</text>
+  <text x="730" y="479" text-anchor="middle" font-size="10" fill="#8b949e">paragraph + table parsing</text>
+  <text x="730" y="493" text-anchor="middle" font-size="10" fill="#8b949e">chunk into 3000-char pages</text>
+
+  <!-- Arrow: PDF to OCR -->
+  <line x1="200" y1="502" x2="200" y2="520" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- OCR box -->
+  <rect x="80" y="520" width="240" height="62" rx="5" fill="#1a1422" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="200" y="537" text-anchor="middle" font-size="11" font-weight="bold" fill="#bc8cff">ocr_processor.py</text>
+  <text x="200" y="552" text-anchor="middle" font-size="10" fill="#8b949e">OpenCV: grayscale → deskew</text>
+  <text x="200" y="566" text-anchor="middle" font-size="10" fill="#8b949e">→ adaptive threshold → Tesseract</text>
+
+  <!-- Converge from both branches to Classifier -->
+  <line x1="200" y1="582" x2="200" y2="608" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="200" y1="608" x2="465" y2="608" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="730" y1="502" x2="730" y2="608" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="730" y1="608" x2="465" y2="608" stroke="#58a6ff" stroke-width="1.5"/>
+  <line x1="465" y1="608" x2="465" y2="625" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Classifier box -->
+  <rect x="310" y="625" width="310" height="55" rx="5" fill="#161b22" stroke="#d29922" stroke-width="1.5"/>
+  <text x="465" y="642" text-anchor="middle" font-size="11" font-weight="bold" fill="#d29922">classifier.py</text>
+  <text x="465" y="657" text-anchor="middle" font-size="10" fill="#8b949e">25 keyword rule sets → doc type</text>
+  <text x="465" y="671" text-anchor="middle" font-size="10" fill="#8b949e">regex extracts: date · author · facility</text>
+
+  <!-- Arrow to Store -->
+  <line x1="465" y1="680" x2="465" y2="698" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- Store to DB box -->
+  <rect x="310" y="698" width="310" height="38" rx="5" fill="#161b22" stroke="#388bfd" stroke-width="1.5"/>
+  <text x="465" y="714" text-anchor="middle" font-size="11" font-weight="bold" fill="#388bfd">Store pages → SQLite</text>
+  <text x="465" y="728" text-anchor="middle" font-size="10" fill="#8b949e">FTS5 trigger auto-indexes each page on insert</text>
+
+  <!-- Arrow to Database section -->
+  <line x1="465" y1="736" x2="465" y2="756" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 3: DATABASE                     -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="766" width="960" height="22" fill="#388bfd" opacity="0.15"/>
+  <rect x="0" y="766" width="4" height="22" fill="#388bfd"/>
+  <text x="15" y="782" font-size="11" font-weight="bold" letter-spacing="1" fill="#388bfd">DATABASE (SQLite · WAL mode · FTS5)   app/db/</text>
+
+  <!-- Table: veterans -->
+  <rect x="20" y="797" width="165" height="60" rx="5" fill="#161b22" stroke="#388bfd" stroke-width="1.5"/>
+  <rect x="20" y="797" width="165" height="20" rx="5" fill="#388bfd" opacity="0.25"/>
+  <text x="102" y="813" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">veterans</text>
+  <text x="102" y="830" text-anchor="middle" font-size="9" fill="#8b949e">full_name, ssn_last4</text>
+  <text x="102" y="845" text-anchor="middle" font-size="9" fill="#8b949e">branch, service_dates, era</text>
+
+  <!-- Table: claims -->
+  <rect x="205" y="797" width="195" height="60" rx="5" fill="#161b22" stroke="#388bfd" stroke-width="1.5"/>
+  <rect x="205" y="797" width="195" height="20" rx="5" fill="#388bfd" opacity="0.25"/>
+  <text x="302" y="813" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">claims</text>
+  <text x="302" y="830" text-anchor="middle" font-size="9" fill="#8b949e">condition, vasrd_code</text>
+  <text x="302" y="845" text-anchor="middle" font-size="9" fill="#8b949e">has_diagnosis · has_nexus · risks</text>
+
+  <!-- Table: documents -->
+  <rect x="420" y="797" width="210" height="60" rx="5" fill="#161b22" stroke="#388bfd" stroke-width="1.5"/>
+  <rect x="420" y="797" width="210" height="20" rx="5" fill="#388bfd" opacity="0.25"/>
+  <text x="525" y="813" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">documents</text>
+  <text x="525" y="830" text-anchor="middle" font-size="9" fill="#8b949e">filename, file_hash, doc_type</text>
+  <text x="525" y="845" text-anchor="middle" font-size="9" fill="#8b949e">doc_date, author, source_facility</text>
+
+  <!-- Table: document_pages -->
+  <rect x="650" y="797" width="210" height="60" rx="5" fill="#161b22" stroke="#388bfd" stroke-width="1.5"/>
+  <rect x="650" y="797" width="210" height="20" rx="5" fill="#388bfd" opacity="0.25"/>
+  <text x="755" y="813" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">document_pages</text>
+  <text x="755" y="830" text-anchor="middle" font-size="9" fill="#8b949e">page_number, raw_text</text>
+  <text x="755" y="845" text-anchor="middle" font-size="9" fill="#8b949e">char_count, has_image</text>
+
+  <!-- FK lines between tables -->
+  <line x1="185" y1="827" x2="205" y2="827" stroke="#30363d" stroke-width="2"/>
+  <line x1="400" y1="827" x2="420" y2="827" stroke="#30363d" stroke-width="2"/>
+  <line x1="630" y1="827" x2="650" y2="827" stroke="#30363d" stroke-width="2"/>
+
+  <!-- claim_documents junction label -->
+  <text x="525" y="875" text-anchor="middle" font-size="9" fill="#8b949e" font-style="italic">claim_documents  (role: primary / nexus / supporting)</text>
+  <line x1="302" y1="857" x2="302" y2="870" stroke="#30363d" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="302" y1="870" x2="525" y2="870" stroke="#30363d" stroke-width="1" stroke-dasharray="3,2"/>
+  <line x1="525" y1="870" x2="525" y2="857" stroke="#30363d" stroke-width="1" stroke-dasharray="3,2"/>
+
+  <!-- FTS5 virtual table -->
+  <rect x="650" y="868" width="270" height="40" rx="5" fill="#1a1422" stroke="#bc8cff" stroke-width="1.5" stroke-dasharray="5,3"/>
+  <text x="785" y="883" text-anchor="middle" font-size="11" font-weight="bold" fill="#bc8cff">FTS5 Virtual Table</text>
+  <text x="785" y="899" text-anchor="middle" font-size="9" fill="#8b949e">BM25 + Porter stemming · auto-sync trigger</text>
+
+  <line x1="755" y1="857" x2="755" y2="868" stroke="#bc8cff" stroke-width="1" stroke-dasharray="4,2" marker-end="url(#arr-purple)"/>
+
+  <!-- Arrow to Analysis -->
+  <line x1="465" y1="910" x2="465" y2="930" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 4: ANALYSIS & SEARCH            -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="940" width="960" height="22" fill="#bc8cff" opacity="0.15"/>
+  <rect x="0" y="940" width="4" height="22" fill="#bc8cff"/>
+  <text x="15" y="956" font-size="11" font-weight="bold" letter-spacing="1" fill="#bc8cff">ANALYSIS &amp; SEARCH   app/analysis/ + app/search/</text>
+
+  <!-- Condition Scanner -->
+  <rect x="20" y="970" width="440" height="110" rx="5" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="240" y="988" text-anchor="middle" font-size="12" font-weight="bold" fill="#bc8cff">Condition Scanner</text>
+  <text x="240" y="1003" text-anchor="middle" font-size="10" fill="#8b949e">app/analysis/condition_scanner.py</text>
+  <text x="35" y="1020" font-size="10" fill="#8b949e">• 200+ VASRD codes mapped to keyword libraries</text>
+  <text x="35" y="1035" font-size="10" fill="#8b949e">• Searches all FTS5-indexed pages for matches</text>
+  <text x="35" y="1050" font-size="10" fill="#8b949e">• Skips already-claimed conditions</text>
+  <text x="35" y="1065" font-size="10" fill="#8b949e">• Returns PotentialClaim objects (Low / Medium / High confidence)</text>
+
+  <!-- Arrow: Condition Scanner queries FTS5 -->
+  <line x1="460" y1="1025" x2="500" y2="1025" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#arr-purple)"/>
+  <text x="480" y="1018" text-anchor="middle" font-size="8" fill="#bc8cff">queries</text>
+
+  <!-- FTS5 Search Engine -->
+  <rect x="500" y="970" width="440" height="110" rx="5" fill="#161b22" stroke="#bc8cff" stroke-width="1.5"/>
+  <text x="720" y="988" text-anchor="middle" font-size="12" font-weight="bold" fill="#bc8cff">FTS5 Search Engine</text>
+  <text x="720" y="1003" text-anchor="middle" font-size="10" fill="#8b949e">app/search/fts_engine.py</text>
+  <text x="515" y="1020" font-size="10" fill="#8b949e">• User-driven full-text search queries</text>
+  <text x="515" y="1035" font-size="10" fill="#8b949e">• BM25 ranked results with snippet highlighting</text>
+  <text x="515" y="1050" font-size="10" fill="#8b949e">• Phrase queries · auto AND-joining multi-terms</text>
+  <text x="515" y="1065" font-size="10" fill="#8b949e">• Fallback to LIKE search on FTS5 syntax error</text>
+
+  <!-- Arrow to Claims -->
+  <line x1="465" y1="1080" x2="465" y2="1100" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 5: CLAIM MANAGEMENT             -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="1110" width="960" height="22" fill="#f78166" opacity="0.15"/>
+  <rect x="0" y="1110" width="4" height="22" fill="#f78166"/>
+  <text x="15" y="1126" font-size="11" font-weight="bold" letter-spacing="1" fill="#f78166">CLAIM MANAGEMENT   app/core/ + app/ui/ClaimPanel</text>
+
+  <!-- Caluza Triangle polygon -->
+  <polygon points="200,1145 95,1305 305,1305" fill="none" stroke="#f78166" stroke-width="2.5"/>
+  <!-- Dashed fill lines to make triangle more visible -->
+  <polygon points="200,1145 95,1305 305,1305" fill="#f78166" opacity="0.05"/>
+
+  <!-- Triangle vertex labels -->
+  <rect x="148" y="1131" width="104" height="19" rx="3" fill="#f78166" opacity="0.2"/>
+  <text x="200" y="1144" text-anchor="middle" font-size="10" font-weight="bold" fill="#f78166">Diagnosis</text>
+
+  <rect x="20" y="1305" width="132" height="19" rx="3" fill="#f78166" opacity="0.2"/>
+  <text x="86" y="1318" text-anchor="middle" font-size="10" font-weight="bold" fill="#f78166">In-Service Event</text>
+
+  <rect x="270" y="1305" width="108" height="19" rx="3" fill="#f78166" opacity="0.2"/>
+  <text x="324" y="1318" text-anchor="middle" font-size="10" font-weight="bold" fill="#f78166">Nexus Letter</text>
+
+  <!-- Triangle center label -->
+  <text x="200" y="1228" text-anchor="middle" font-size="11" fill="#f78166" font-style="italic">Caluza</text>
+  <text x="200" y="1244" text-anchor="middle" font-size="11" fill="#f78166" font-style="italic">Triangle</text>
+  <text x="200" y="1262" text-anchor="middle" font-size="9" fill="#8b949e">score: 0–3 legs complete</text>
+
+  <!-- Status color legend -->
+  <circle cx="86" cy="1345" r="5" fill="#1a7a4a"/>
+  <text x="97" y="1349" font-size="9" fill="#8b949e">GREEN  = all 3 legs + no risks</text>
+  <circle cx="86" cy="1361" r="5" fill="#b8610a"/>
+  <text x="97" y="1365" font-size="9" fill="#8b949e">ORANGE = all 3 legs + risk flags</text>
+  <circle cx="86" cy="1377" r="5" fill="#0070c0"/>
+  <text x="97" y="1381" font-size="9" fill="#8b949e">BLUE   = 2 of 3 legs done</text>
+  <circle cx="86" cy="1393" r="5" fill="#c0392b"/>
+  <text x="97" y="1397" font-size="9" fill="#8b949e">RED    = fewer than 2 legs</text>
+
+  <!-- Risk Flags box (right side) -->
+  <rect x="420" y="1142" width="520" height="115" rx="5" fill="#161b22" stroke="#f78166" stroke-width="1"/>
+  <text x="680" y="1160" text-anchor="middle" font-size="12" font-weight="bold" fill="#f78166">Denial Risk Flags</text>
+  <text x="435" y="1178" font-size="10" fill="#8b949e">⚠  Missing nexus letter</text>
+  <text x="435" y="1193" font-size="10" fill="#8b949e">⚠  Negative C&amp;P exam likely (nexus language unverified)</text>
+  <text x="435" y="1208" font-size="10" fill="#8b949e">⚠  Wrong form submitted (e.g. TDIU without active diagnosis)</text>
+  <text x="435" y="1223" font-size="10" fill="#8b949e">⚠  No continuity of treatment in records</text>
+  <text x="435" y="1238" font-size="10" fill="#8b949e">⚠  Secondary condition — missing primary claim</text>
+
+  <!-- Combined Rating box (right side, below risk flags) -->
+  <rect x="420" y="1270" width="520" height="65" rx="5" fill="#161b22" stroke="#f78166" stroke-width="1"/>
+  <text x="680" y="1288" text-anchor="middle" font-size="12" font-weight="bold" fill="#f78166">Combined Rating Calculator</text>
+  <text x="435" y="1305" font-size="10" fill="#8b949e">VA whole-person method (not additive) · rounds to nearest 10%</text>
+  <text x="435" y="1320" font-size="10" fill="#8b949e">Displayed on Dashboard · PACT Act eligibility banner auto-shown</text>
+
+  <!-- Arrow to Export -->
+  <line x1="480" y1="1410" x2="480" y2="1430" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 6: EXPORT                       -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="1440" width="960" height="22" fill="#3fb950" opacity="0.15"/>
+  <rect x="0" y="1440" width="4" height="22" fill="#3fb950"/>
+  <text x="15" y="1456" font-size="11" font-weight="bold" letter-spacing="1" fill="#3fb950">EXPORT   app/export/package_builder.py</text>
+
+  <!-- Export description -->
+  <rect x="20" y="1470" width="285" height="115" rx="5" fill="#161b22" stroke="#3fb950" stroke-width="1.5"/>
+  <text x="162" y="1488" text-anchor="middle" font-size="12" font-weight="bold" fill="#3fb950">Submission Package</text>
+  <text x="35" y="1505" font-size="10" fill="#8b949e">• Loads claims + documents from DB</text>
+  <text x="35" y="1520" font-size="10" fill="#8b949e">• Copies evidence files to sorted folders</text>
+  <text x="35" y="1535" font-size="10" fill="#8b949e">• Generates cover sheet + claim summaries</text>
+  <text x="35" y="1550" font-size="10" fill="#8b949e">• Creates VA form checklist</text>
+  <text x="35" y="1565" font-size="10" fill="#8b949e">• Output: submission-ready folder tree</text>
+
+  <!-- Folder tree -->
+  <rect x="325" y="1470" width="615" height="150" rx="5" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+  <text x="340" y="1490" font-family="'Courier New', monospace" font-size="10" fill="#3fb950">VeteranName_timestamp/</text>
+  <text x="340" y="1506" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">├── 00_Cover_Sheet.txt</text>
+  <text x="340" y="1521" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">├── 01_DD214/</text>
+  <text x="340" y="1536" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">├── 02_ServiceTreatmentRecords/</text>
+  <text x="340" y="1551" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">├── 03_Claims/ConditionName_DCxxxx/</text>
+  <text x="340" y="1566" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">│   ├── Claim_Summary.txt  ├── Primary_Evidence/</text>
+  <text x="340" y="1581" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">│   ├── Nexus_Statements/  └── Supporting_Evidence/</text>
+  <text x="340" y="1596" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">├── 04_Forms/  ├── 05_Buddy_Statements/</text>
+  <text x="340" y="1611" font-family="'Courier New', monospace" font-size="10" fill="#8b949e">└── 06_Other_Medical_Records/</text>
+
+  <!-- Arrow to UI Nav -->
+  <line x1="480" y1="1630" x2="480" y2="1648" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr)"/>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 7: UI NAVIGATION                -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="1658" width="960" height="22" fill="#79c0ff" opacity="0.15"/>
+  <rect x="0" y="1658" width="4" height="22" fill="#79c0ff"/>
+  <text x="15" y="1674" font-size="11" font-weight="bold" letter-spacing="1" fill="#79c0ff">UI NAVIGATION   app/ui/ (PyQt6 · QStackedWidget sidebar)</text>
+
+  <!-- 6 tab panels -->
+  <rect x="18" y="1688" width="145" height="65" rx="4" fill="#161b22" stroke="#79c0ff" stroke-width="1.5"/>
+  <text x="90" y="1705" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">Dashboard</text>
+  <text x="90" y="1720" text-anchor="middle" font-size="9" fill="#8b949e">stat cards</text>
+  <text x="90" y="1733" text-anchor="middle" font-size="9" fill="#8b949e">PACT Act banner</text>
+  <text x="90" y="1746" text-anchor="middle" font-size="9" fill="#8b949e">combined rating</text>
+
+  <rect x="173" y="1688" width="145" height="65" rx="4" fill="#161b22" stroke="#79c0ff" stroke-width="1.5"/>
+  <text x="245" y="1705" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">Veteran</text>
+  <text x="245" y="1720" text-anchor="middle" font-size="9" fill="#8b949e">profile + service</text>
+  <text x="245" y="1733" text-anchor="middle" font-size="9" fill="#8b949e">history form</text>
+
+  <rect x="328" y="1688" width="145" height="65" rx="4" fill="#161b22" stroke="#79c0ff" stroke-width="1.5"/>
+  <text x="400" y="1705" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">Documents</text>
+  <text x="400" y="1720" text-anchor="middle" font-size="9" fill="#8b949e">drop files</text>
+  <text x="400" y="1733" text-anchor="middle" font-size="9" fill="#8b949e">table + filter</text>
+  <text x="400" y="1746" text-anchor="middle" font-size="9" fill="#8b949e">ingestion progress</text>
+
+  <rect x="483" y="1688" width="145" height="65" rx="4" fill="#161b22" stroke="#79c0ff" stroke-width="1.5"/>
+  <text x="555" y="1705" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">Claims</text>
+  <text x="555" y="1720" text-anchor="middle" font-size="9" fill="#8b949e">Caluza tracking</text>
+  <text x="555" y="1733" text-anchor="middle" font-size="9" fill="#8b949e">risk flags</text>
+  <text x="555" y="1746" text-anchor="middle" font-size="9" fill="#8b949e">scan records</text>
+
+  <rect x="638" y="1688" width="145" height="65" rx="4" fill="#161b22" stroke="#79c0ff" stroke-width="1.5"/>
+  <text x="710" y="1705" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">Search</text>
+  <text x="710" y="1720" text-anchor="middle" font-size="9" fill="#8b949e">FTS5 query</text>
+  <text x="710" y="1733" text-anchor="middle" font-size="9" fill="#8b949e">filter by doc type</text>
+  <text x="710" y="1746" text-anchor="middle" font-size="9" fill="#8b949e">snippet results</text>
+
+  <rect x="793" y="1688" width="149" height="65" rx="4" fill="#161b22" stroke="#79c0ff" stroke-width="1.5"/>
+  <text x="867" y="1705" text-anchor="middle" font-size="11" font-weight="bold" fill="#79c0ff">Export</text>
+  <text x="867" y="1720" text-anchor="middle" font-size="9" fill="#8b949e">build folder package</text>
+  <text x="867" y="1733" text-anchor="middle" font-size="9" fill="#8b949e">for VA submission</text>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!-- SECTION 8: END-TO-END FLOW SUMMARY      -->
+  <!-- ═══════════════════════════════════════ -->
+  <rect x="0" y="1775" width="960" height="22" fill="#ffa657" opacity="0.15"/>
+  <rect x="0" y="1775" width="4" height="22" fill="#ffa657"/>
+  <text x="15" y="1791" font-size="11" font-weight="bold" letter-spacing="1" fill="#ffa657">END-TO-END FLOW SUMMARY</text>
+
+  <!-- Pipeline: 7 boxes, w=108, gap=12 -->
+  <!-- Start x=18, step=120 -->
+  <!-- Centers: 72, 192, 312, 432, 552, 672, 792 -->
+  <rect x="18"  y="1808" width="108" height="40" rx="4" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="72"  y="1823" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffa657">Records</text>
+  <text x="72"  y="1839" text-anchor="middle" font-size="9" fill="#8b949e">PDF / DOCX</text>
+
+  <line x1="126" y1="1828" x2="138" y2="1828" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <rect x="138" y="1808" width="108" height="40" rx="4" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="192" y="1823" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffa657">Ingest</text>
+  <text x="192" y="1839" text-anchor="middle" font-size="9" fill="#8b949e">extract pages</text>
+
+  <line x1="246" y1="1828" x2="258" y2="1828" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <rect x="258" y="1808" width="108" height="40" rx="4" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="312" y="1823" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffa657">Index</text>
+  <text x="312" y="1839" text-anchor="middle" font-size="9" fill="#8b949e">FTS5 SQLite</text>
+
+  <line x1="366" y1="1828" x2="378" y2="1828" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <rect x="378" y="1808" width="108" height="40" rx="4" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="432" y="1823" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffa657">Scan</text>
+  <text x="432" y="1839" text-anchor="middle" font-size="9" fill="#8b949e">suggest claims</text>
+
+  <line x1="486" y1="1828" x2="498" y2="1828" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <rect x="498" y="1808" width="108" height="40" rx="4" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="552" y="1823" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffa657">Claims</text>
+  <text x="552" y="1839" text-anchor="middle" font-size="9" fill="#8b949e">Caluza triangle</text>
+
+  <line x1="606" y1="1828" x2="618" y2="1828" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <rect x="618" y="1808" width="108" height="40" rx="4" fill="#161b22" stroke="#ffa657" stroke-width="1.5"/>
+  <text x="672" y="1823" text-anchor="middle" font-size="10" font-weight="bold" fill="#ffa657">Link Evidence</text>
+  <text x="672" y="1839" text-anchor="middle" font-size="9" fill="#8b949e">to claims</text>
+
+  <line x1="726" y1="1828" x2="738" y2="1828" stroke="#ffa657" stroke-width="1.5" marker-end="url(#arr-green)"/>
+
+  <rect x="738" y="1808" width="108" height="40" rx="4" fill="#161b22" stroke="#3fb950" stroke-width="2"/>
+  <text x="792" y="1823" text-anchor="middle" font-size="10" font-weight="bold" fill="#3fb950">Export</text>
+  <text x="792" y="1839" text-anchor="middle" font-size="9" fill="#8b949e">folder package</text>
+
+  <!-- Footer -->
+  <text x="480" y="1857" text-anchor="middle" font-size="9" fill="#484f58">va_claims_manager · PyQt6 desktop app · SQLite + FTS5 · pdfplumber · Tesseract OCR</text>
+</svg>

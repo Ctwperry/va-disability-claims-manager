@@ -12,13 +12,36 @@ build/
 venv/
 env/
 
-# SQLite database (contains personal data — never commit)
+# ---------------------------------------------------------------
+# PERSONAL / SENSITIVE DATA — NEVER COMMIT
+# ---------------------------------------------------------------
+
+# SQLite database (veteran profiles, claims, medical record index)
 data/va_claims.db
 data/va_claims.db-shm
 data/va_claims.db-wal
+data/*.db
+data/*.db-shm
+data/*.db-wal
 
-# Export output
+# Any imported medical records, PDFs, or documents ingested by the app
+data/documents/
+data/records/
+*.pdf
+*.docx
+*.doc
+*.tiff
+*.tif
+
+# Export packages (contain personal claim summaries)
 data/exports/
+
+# Any personal research or notes files
+*.txt
+*research*.txt
+*notes*.txt
+*medical*.txt
+*records*.txt
 
 # OS
 .DS_Store

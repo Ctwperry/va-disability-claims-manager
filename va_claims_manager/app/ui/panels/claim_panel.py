@@ -7,15 +7,17 @@ from PyQt6.QtWidgets import (
     QListWidget, QListWidgetItem, QFrame, QLineEdit, QComboBox,
     QTextEdit, QCheckBox, QScrollArea, QSplitter, QGroupBox,
     QSpinBox, QMessageBox, QSizePolicy,
-    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import QCompleter
 
-from app.config import BODY_SYSTEMS, CLAIM_TYPES, VASRD_CODES_PATH, PACT_ACT_PATH
+from app.config import BODY_SYSTEMS, CLAIM_TYPES, PACT_ACT_PATH
 from app.core.claim import Claim
+from app.services.conditions_service import load_vasrd_codes
 from app.ui.widgets.triangle_widget import TriangleWidget
+from app.ui.widgets.symptom_log_widget import SymptomLogWidget
+from app.ui.widgets.evidence_panel import EvidencePanel
 from app.ui.dialogs.cp_prep_dialog import CPPrepDialog
 from app.ui.dialogs.buddy_statement_dialog import BuddyStatementDialog
 from app.ui.dialogs.nexus_letter_dialog import NexusLetterDialog
@@ -33,7 +35,7 @@ class ClaimPanel(QWidget):
         self._veteran_id: int | None = None
         self._veteran = None           # Veteran object for era/date access
         self._current_claim_id: int | None = None
-        self._vasrd_codes: list[dict] = self._load_vasrd()
+        self._vasrd_codes: list[dict] = load_vasrd_codes()
         self._pact_entries: list[dict] = self._load_pact_entries()
         self._current_pact_basis: str = ""   # filled when PACT match found
         self._build_ui()
@@ -418,20 +420,14 @@ class ClaimPanel(QWidget):
         rv.addWidget(cont_card)
 
         # ---- Evidence Documents ----
-        self._evidence_header = self._section_label("Identified Evidence Documents")
-        rv.addWidget(self._evidence_header)
-        self._evidence_card = self._card()
-        self._evidence_layout = QVBoxLayout(self._evidence_card)
-        self._evidence_layout.setContentsMargins(12, 10, 12, 10)
-        self._evidence_layout.setSpacing(6)
-        self._evidence_empty_lbl = QLabel(
-            "  No evidence documents linked yet.\n"
-            "  Use 'Analyze Records' in the Documents tab to auto-detect evidence,\n"
-            "  or assign documents manually via the role dropdowns above."
-        )
-        self._evidence_empty_lbl.setStyleSheet("color: #888; font-size: 12px; padding: 6px;")
-        self._evidence_layout.addWidget(self._evidence_empty_lbl)
-        rv.addWidget(self._evidence_card)
+        rv.addWidget(self._section_label("Identified Evidence Documents"))
+        ev_card = self._card()
+        ev_layout = QVBoxLayout(ev_card)
+        ev_layout.setContentsMargins(0, 0, 0, 0)
+        ev_layout.setSpacing(0)
+        self._evidence_panel = EvidencePanel()
+        ev_layout.addWidget(self._evidence_panel)
+        rv.addWidget(ev_card)
 
         # ---- Symptom & Treatment Log ----
         rv.addWidget(self._section_label("Symptom & Treatment Log  (\"Evidence Map\")"))
@@ -439,55 +435,8 @@ class ClaimPanel(QWidget):
         symp_layout = QVBoxLayout(symp_card)
         symp_layout.setContentsMargins(12, 10, 12, 10)
         symp_layout.setSpacing(6)
-
-        symp_inst = QLabel(
-            "Log each medical record entry that supports this claim. "
-            "Reference the source document and page number so the VA rater can find it directly. "
-            "This data auto-fills the Statement in Support of Claim (21-4138) generator."
-        )
-        symp_inst.setWordWrap(True)
-        symp_inst.setStyleSheet("font-size: 11px; color: #666; margin-bottom: 4px;")
-        symp_layout.addWidget(symp_inst)
-
-        self._symptom_table = QTableWidget()
-        self._symptom_table.setColumnCount(5)
-        self._symptom_table.setHorizontalHeaderLabels([
-            "Date", "Source & Page #", "Complaint / Symptom",
-            "Diagnosis / Doctor's Notes", "Treatment / Limitations"
-        ])
-        self._symptom_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
-        self._symptom_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
-        self._symptom_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
-        self._symptom_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
-        self._symptom_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
-        self._symptom_table.setColumnWidth(0, 90)
-        self._symptom_table.setColumnWidth(1, 130)
-        self._symptom_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
-        self._symptom_table.setAlternatingRowColors(True)
-        self._symptom_table.setFixedHeight(160)
-        self._symptom_table.setStyleSheet(
-            "QTableWidget { font-size: 12px; gridline-color: #ebebeb; }"
-            "QHeaderView::section { background: #f5f7fa; font-size: 11px; "
-            "font-weight: bold; color: #555e6e; padding: 3px 5px; "
-            "border-bottom: 2px solid #dde2e8; }"
-        )
-        self._symptom_table.verticalHeader().setVisible(False)
-        symp_layout.addWidget(self._symptom_table)
-
-        symp_btn_row = QHBoxLayout()
-        symp_add_btn = QPushButton("+ Add Row")
-        symp_add_btn.setFixedHeight(26)
-        symp_add_btn.setFixedWidth(90)
-        symp_add_btn.clicked.connect(self._symptom_add_row)
-        symp_btn_row.addWidget(symp_add_btn)
-
-        symp_del_btn = QPushButton("Delete Row")
-        symp_del_btn.setFixedHeight(26)
-        symp_del_btn.setFixedWidth(90)
-        symp_del_btn.clicked.connect(self._symptom_delete_row)
-        symp_btn_row.addWidget(symp_del_btn)
-        symp_btn_row.addStretch()
-        symp_layout.addLayout(symp_btn_row)
+        self._symptom_log_widget = SymptomLogWidget()
+        symp_layout.addWidget(self._symptom_log_widget)
         rv.addWidget(symp_card)
 
         # ---- Notes ----
@@ -816,53 +765,6 @@ class ClaimPanel(QWidget):
                     self._secondary_combo.addItem(label, c.id)
         self._secondary_combo.blockSignals(False)
 
-    def _symptom_add_row(self):
-        """Append a blank row to the symptom log table."""
-        row = self._symptom_table.rowCount()
-        self._symptom_table.insertRow(row)
-        for col in range(5):
-            self._symptom_table.setItem(row, col, QTableWidgetItem(""))
-        self._symptom_table.setRowHeight(row, 28)
-
-    def _symptom_delete_row(self):
-        """Delete the currently selected row from the symptom log table."""
-        selected = self._symptom_table.selectedItems()
-        if selected:
-            self._symptom_table.removeRow(self._symptom_table.currentRow())
-
-    def _load_symptom_log(self, json_str: str):
-        """Populate the symptom table from a JSON string."""
-        self._symptom_table.setRowCount(0)
-        try:
-            entries = json.loads(json_str or "[]")
-        except Exception:
-            entries = []
-        for entry in entries:
-            row = self._symptom_table.rowCount()
-            self._symptom_table.insertRow(row)
-            self._symptom_table.setItem(row, 0, QTableWidgetItem(entry.get("date", "")))
-            self._symptom_table.setItem(row, 1, QTableWidgetItem(entry.get("source", "")))
-            self._symptom_table.setItem(row, 2, QTableWidgetItem(entry.get("complaint", "")))
-            self._symptom_table.setItem(row, 3, QTableWidgetItem(entry.get("diagnosis", "")))
-            self._symptom_table.setItem(row, 4, QTableWidgetItem(entry.get("treatment", "")))
-            self._symptom_table.setRowHeight(row, 28)
-
-    def _get_symptom_log_json(self) -> str:
-        """Serialize the symptom table to a JSON string."""
-        entries = []
-        for row in range(self._symptom_table.rowCount()):
-            def cell(c):
-                item = self._symptom_table.item(row, c)
-                return item.text().strip() if item else ""
-            entries.append({
-                "date": cell(0),
-                "source": cell(1),
-                "complaint": cell(2),
-                "diagnosis": cell(3),
-                "treatment": cell(4),
-            })
-        return json.dumps(entries, ensure_ascii=False)
-
     def _on_statement_4138(self):
         """Open the VA Form 21-4138 draft generator for the current claim."""
         if self._current_claim_id is None:
@@ -870,7 +772,7 @@ class ClaimPanel(QWidget):
         # Save symptom log to claim before opening so dialog sees latest data
         claim = claim_repo.get_by_id(self._current_claim_id)
         if claim:
-            claim.symptom_log = self._get_symptom_log_json()
+            claim.symptom_log = self._symptom_log_widget.get_data_json()
             dlg = Statement4138Dialog(claim, veteran=self._veteran, parent=self)
             dlg.exec()
 
@@ -901,16 +803,6 @@ class ClaimPanel(QWidget):
         if claim:
             dlg = CPPrepDialog(claim, parent=self)
             dlg.exec()
-
-    @staticmethod
-    def _load_vasrd() -> list[dict]:
-        try:
-            import json
-            with open(VASRD_CODES_PATH) as f:
-                data = json.load(f)
-            return data.get("codes", [])
-        except Exception:
-            return []
 
     def _populate_condition_dropdown(self):
         """Populate the condition name combo with all VASRD entries and attach a completer."""
@@ -961,195 +853,6 @@ class ClaimPanel(QWidget):
         if entry:
             return entry["name"]
         return text
-
-    # ------------------------------------------------------------------
-    # Evidence documents panel
-    # ------------------------------------------------------------------
-
-    def _clear_evidence(self):
-        """Remove all evidence document cards and show the empty-state label."""
-        layout = self._evidence_layout
-        while layout.count():
-            item = layout.takeAt(0)
-            widget = item.widget()
-            if widget and widget is not self._evidence_empty_lbl:
-                widget.deleteLater()
-        self._evidence_empty_lbl.setVisible(True)
-        layout.addWidget(self._evidence_empty_lbl)
-
-    def _load_evidence(self, claim_id: int):
-        """Load claim_documents for this claim and render a card for each linked document."""
-        import json as _json
-        import html as _html
-        from app.db.connection import get_connection
-
-        self._clear_evidence()
-
-        conn = get_connection()
-        rows = conn.execute(
-            """
-            SELECT cd.claim_id, cd.document_id, cd.role, cd.notes,
-                   d.filename, d.doc_type
-            FROM claim_documents cd
-            JOIN documents d ON d.id = cd.document_id
-            WHERE cd.claim_id = ?
-            ORDER BY d.filename
-            """,
-            (claim_id,),
-        ).fetchall()
-
-        if not rows:
-            return
-
-        self._evidence_empty_lbl.setVisible(False)
-
-        for row in rows:
-            doc_id = row["document_id"]
-            row_role = row["role"] or "supporting"
-            filename = row["filename"] or "Unknown file"
-            doc_type = row["doc_type"] or "Document"
-            role = row_role
-            notes_raw = row["notes"] or "{}"
-
-            try:
-                notes = _json.loads(notes_raw)
-            except Exception:
-                notes = {}
-
-            pages = notes.get("pages", [])
-            auto_detected = notes.get("auto_detected", False)
-
-            card = QFrame()
-            card.setObjectName("card")
-            card.setStyleSheet(
-                "QFrame#card { border: 1px solid #d0d7de; border-radius: 6px; "
-                "background: #f8f9fa; margin-bottom: 2px; }"
-            )
-            card_layout = QVBoxLayout(card)
-            card_layout.setContentsMargins(10, 8, 10, 8)
-            card_layout.setSpacing(4)
-
-            # Header row: filename + doc type badge
-            header_row = QHBoxLayout()
-            fname_lbl = QLabel(f"<b>{_html.escape(filename)}</b>")
-            fname_lbl.setStyleSheet("font-size: 13px;")
-            header_row.addWidget(fname_lbl)
-
-            type_badge = QLabel(f"  {_html.escape(doc_type)}  ")
-            type_badge.setStyleSheet(
-                "font-size: 11px; padding: 1px 6px; border-radius: 8px; "
-                "background: #dde3ea; color: #444;"
-            )
-            header_row.addWidget(type_badge)
-            if auto_detected:
-                auto_badge = QLabel("  Auto-detected  ")
-                auto_badge.setStyleSheet(
-                    "font-size: 11px; padding: 1px 6px; border-radius: 8px; "
-                    "background: #e3f0ff; color: #0050a0;"
-                )
-                header_row.addWidget(auto_badge)
-            header_row.addStretch()
-            card_layout.addLayout(header_row)
-
-            # Role selector
-            role_row = QHBoxLayout()
-            role_lbl = QLabel("Role:")
-            role_lbl.setStyleSheet("font-size: 12px; color: #555;")
-            role_row.addWidget(role_lbl)
-
-            role_combo = QComboBox()
-            role_combo.addItem("Supporting Evidence", "supporting")
-            role_combo.addItem("Diagnosis Evidence", "diagnosis")
-            role_combo.addItem("In-Service Evidence", "inservice_event")
-            role_combo.addItem("Nexus Letter", "nexus")
-            role_combo.addItem("Buddy Statement", "buddy_statement")
-            # Select current role
-            for i in range(role_combo.count()):
-                if role_combo.itemData(i) == role:
-                    role_combo.setCurrentIndex(i)
-                    break
-            role_combo.setFixedWidth(200)
-            role_combo.setStyleSheet("font-size: 12px;")
-
-            # Capture composite PK for handlers
-            _cid = claim_id
-            _did = doc_id
-            _orig_role = role
-
-            def _make_role_handler(cid_cap, did_cap, orig_role_cap, combo_cap):
-                def handler(idx):
-                    new_role = combo_cap.itemData(idx)
-                    try:
-                        c = get_connection()
-                        with c:
-                            c.execute(
-                                "UPDATE claim_documents SET role=? "
-                                "WHERE claim_id=? AND document_id=? AND role=?",
-                                (new_role, cid_cap, did_cap, orig_role_cap),
-                            )
-                    except Exception:
-                        pass
-                return handler
-
-            role_combo.currentIndexChanged.connect(
-                _make_role_handler(_cid, _did, _orig_role, role_combo)
-            )
-            role_row.addWidget(role_combo)
-            role_row.addStretch()
-
-            # Remove button
-            btn_remove = QPushButton("Remove")
-            btn_remove.setFixedWidth(70)
-            btn_remove.setStyleSheet(
-                "font-size: 11px; padding: 2px 8px; color: #c0392b; "
-                "border: 1px solid #c0392b; border-radius: 4px; background: white;"
-            )
-
-            def _make_remove_handler(cid_cap, did_cap, role_cap, card_cap):
-                def handler():
-                    try:
-                        c = get_connection()
-                        with c:
-                            c.execute(
-                                "DELETE FROM claim_documents "
-                                "WHERE claim_id=? AND document_id=? AND role=?",
-                                (cid_cap, did_cap, role_cap),
-                            )
-                        card_cap.setVisible(False)
-                        card_cap.deleteLater()
-                    except Exception:
-                        pass
-                return handler
-
-            btn_remove.clicked.connect(_make_remove_handler(_cid, _did, _orig_role, card))
-            role_row.addWidget(btn_remove)
-            card_layout.addLayout(role_row)
-
-            # Page evidence snippets
-            if pages:
-                for page_info in pages[:3]:  # show up to 3 pages per doc
-                    pg_num = page_info.get("page_number", "?")
-                    keyword = page_info.get("keyword", "")
-                    snippet = page_info.get("snippet", "")[:300]
-                    if snippet:
-                        snippet_text = f"<i>Page {_html.escape(str(pg_num))}</i>"
-                        if keyword:
-                            snippet_text += f" &nbsp;·&nbsp; keyword: <b>{_html.escape(keyword)}</b>"
-                        snippet_text += f"<br><span style='color:#444;font-size:11px;'>{_html.escape(snippet)}</span>"
-                        snip_lbl = QLabel(snippet_text)
-                        snip_lbl.setWordWrap(True)
-                        snip_lbl.setStyleSheet(
-                            "font-size: 12px; color: #333; padding: 4px 6px; "
-                            "background: #fff; border-radius: 4px; "
-                            "border: 1px solid #e0e0e0; margin-top: 2px;"
-                        )
-                        card_layout.addWidget(snip_lbl)
-                if len(pages) > 3:
-                    more_lbl = QLabel(f"  …and {len(pages) - 3} more page(s) matched")
-                    more_lbl.setStyleSheet("font-size: 11px; color: #777; padding: 2px 4px;")
-                    card_layout.addWidget(more_lbl)
-
-            self._evidence_layout.addWidget(card)
 
     # ------------------------------------------------------------------
     # List refresh
@@ -1242,14 +945,14 @@ class ClaimPanel(QWidget):
         self._update_continuity_gap()
 
         # Symptom & Treatment Log
-        self._load_symptom_log(claim.symptom_log or "[]")
+        self._symptom_log_widget.load_data(claim.symptom_log or "[]")
 
         # Check PACT suggestion for this condition
         self._check_pact_suggestion(claim.condition_name)
 
         self._update_triangle_preview()
         self._update_risk_labels(claim)
-        self._load_evidence(claim.id)
+        self._evidence_panel.load_evidence(claim.id)
 
         badge_text = claim.status.replace("_", " ").title()
         badge_color = {"building": "#dde2e8", "ready": "#e8f8f0",
@@ -1280,7 +983,7 @@ class ClaimPanel(QWidget):
         self._vasrd_hint.clear()
         self._insvc_description.clear()
         self._notes.clear()
-        self._clear_evidence()
+        self._evidence_panel.clear()
         for cb in [self._diag_checked, self._insvc_checked, self._nexus_checked,
                    self._nexus_verified]:
             cb.setChecked(False)
@@ -1296,7 +999,7 @@ class ClaimPanel(QWidget):
         self._first_treatment_date.clear()
         self._continuity_notes.clear()
         self._continuity_gap_lbl.setText("")
-        self._symptom_table.setRowCount(0)
+        self._symptom_log_widget.clear()
         self._pact_banner.setVisible(False)
         self._btn_save.setEnabled(False)
         self._btn_delete_claim.setVisible(False)
@@ -1365,7 +1068,7 @@ class ClaimPanel(QWidget):
             secondary_to_claim_id=secondary_id,
             first_treatment_date=self._first_treatment_date.text().strip(),
             continuity_notes=self._continuity_notes.toPlainText().strip(),
-            symptom_log=self._get_symptom_log_json(),
+            symptom_log=self._symptom_log_widget.get_data_json(),
         )
         c.compute_risks()
 

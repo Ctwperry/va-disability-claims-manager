@@ -1,0 +1,19 @@
+# Root-level gitignore
+# Protects personal/sensitive files at the project root
+
+# Personal research notes, medical records, any text documents
+*.txt
+*.pdf
+*.docx
+*.doc
+
+# Claude settings (local only)
+.claude/settings.local.json
+
+# VS Code local settings
+.vscode/settings.json
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
