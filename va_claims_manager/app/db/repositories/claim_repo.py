@@ -18,8 +18,9 @@ def create(c: Claim) -> int:
                 has_nexus, nexus_source, nexus_type, nexus_language_verified,
                 risk_missing_nexus, risk_no_continuity, risk_wrong_form, risk_negative_cp_likely,
                 status, priority_rating, notes,
-                effective_date, effective_date_basis, secondary_to_claim_id
-            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                effective_date, effective_date_basis, secondary_to_claim_id,
+                first_treatment_date, continuity_notes, symptom_log
+            ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
             """,
             _params(c),
         )
@@ -39,10 +40,11 @@ def update(c: Claim):
                 risk_missing_nexus=?, risk_no_continuity=?, risk_wrong_form=?, risk_negative_cp_likely=?,
                 status=?, priority_rating=?, notes=?,
                 effective_date=?, effective_date_basis=?, secondary_to_claim_id=?,
+                first_treatment_date=?, continuity_notes=?, symptom_log=?,
                 updated_at=datetime('now')
             WHERE id=?
             """,
-            _params(c) + (c.id,),
+            _params(c)[1:] + (c.id,),
         )
 
 
@@ -94,4 +96,5 @@ def _params(c: Claim) -> tuple:
         int(c.risk_missing_nexus), int(c.risk_no_continuity), int(c.risk_wrong_form),
         int(c.risk_negative_cp_likely), c.status, c.priority_rating, c.notes,
         c.effective_date or "", c.effective_date_basis or "", c.secondary_to_claim_id,
+        c.first_treatment_date or "", c.continuity_notes or "", c.symptom_log or "[]",
     )

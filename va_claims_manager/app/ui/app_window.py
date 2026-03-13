@@ -21,6 +21,7 @@ from app.ui.panels.search_panel import SearchPanel
 from app.ui.panels.claim_panel import ClaimPanel
 from app.ui.panels.dashboard_panel import DashboardPanel
 from app.ui.panels.export_panel import ExportPanel
+from app.ui.panels.conditions_browser_panel import ConditionsBrowserPanel
 
 
 class MainWindow(QMainWindow):
@@ -112,6 +113,7 @@ class MainWindow(QMainWindow):
             ("Veteran Profile", "veteran"),
             ("Documents", "documents"),
             ("Claims", "claims"),
+            ("Conditions", "conditions"),
             ("Search", "search"),
             ("Export Package", "export"),
         ]
@@ -160,6 +162,7 @@ class MainWindow(QMainWindow):
         """Instantiate and register all panels into the stack."""
         # 0: Dashboard
         dashboard = DashboardPanel()
+        dashboard.add_claim_requested.connect(self._on_add_claim_from_browser)
         self._panels["dashboard"] = dashboard
         self._stack.addWidget(dashboard)
 
@@ -182,12 +185,18 @@ class MainWindow(QMainWindow):
         self._panels["claims"] = claim_panel
         self._stack.addWidget(claim_panel)
 
-        # 4: Search
+        # 4: Conditions Browser
+        conditions_panel = ConditionsBrowserPanel()
+        conditions_panel.add_claim_requested.connect(self._on_add_claim_from_browser)
+        self._panels["conditions"] = conditions_panel
+        self._stack.addWidget(conditions_panel)
+
+        # 5: Search
         search_panel = SearchPanel()
         self._panels["search"] = search_panel
         self._stack.addWidget(search_panel)
 
-        # 5: Export
+        # 6: Export
         export_panel = ExportPanel()
         self._panels["export"] = export_panel
         self._stack.addWidget(export_panel)
@@ -202,7 +211,7 @@ class MainWindow(QMainWindow):
             btn.style().unpolish(btn)
             btn.style().polish(btn)
         self._stack.setCurrentIndex(index)
-        keys = ["dashboard", "veteran", "documents", "claims", "search", "export"]
+        keys = ["dashboard", "veteran", "documents", "claims", "conditions", "search", "export"]
         if 0 <= index < len(keys):
             panel_key = keys[index]
             vid = self._active_veteran_id
@@ -218,6 +227,10 @@ class MainWindow(QMainWindow):
                 cp = self._panels.get("claims")
                 if isinstance(cp, ClaimPanel):
                     cp.load_veteran(vid)
+            elif panel_key == "conditions":
+                cbp = self._panels.get("conditions")
+                if isinstance(cbp, ConditionsBrowserPanel):
+                    cbp.load_veteran(vid)
             elif panel_key == "search":
                 sp = self._panels.get("search")
                 if isinstance(sp, SearchPanel):
@@ -286,6 +299,13 @@ class MainWindow(QMainWindow):
         dash = self._panels.get("dashboard")
         if isinstance(dash, DashboardPanel):
             dash.refresh()
+
+    def _on_add_claim_from_browser(self, condition: dict):
+        """Navigate to Claims panel and pre-fill editor with the selected condition."""
+        self._nav_select(3)  # Claims is index 3
+        cp = self._panels.get("claims")
+        if isinstance(cp, ClaimPanel):
+            cp.prefill_new_claim(condition)
 
     # ------------------------------------------------------------------
     # Dialogs

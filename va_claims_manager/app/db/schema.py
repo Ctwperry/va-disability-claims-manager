@@ -8,7 +8,7 @@ from app.db.connection import get_connection
 
 log = logging.getLogger(__name__)
 
-CURRENT_VERSION = 2
+CURRENT_VERSION = 4
 
 # ---------------------------------------------------------------------------
 # DDL Statements
@@ -288,6 +288,21 @@ def _run_migrations(conn: "sqlite3.Connection", from_version: int):
         with conn:
             conn.execute("UPDATE app_settings SET value='2' WHERE key='db_version'")
         log.info("Migrated to DB version 2")
+
+    if from_version < 3:
+        # v3: continuity of symptomatology tracking
+        _alter_safe(conn, "ALTER TABLE claims ADD COLUMN first_treatment_date TEXT DEFAULT ''")
+        _alter_safe(conn, "ALTER TABLE claims ADD COLUMN continuity_notes TEXT DEFAULT ''")
+        with conn:
+            conn.execute("UPDATE app_settings SET value='3' WHERE key='db_version'")
+        log.info("Migrated to DB version 3")
+
+    if from_version < 4:
+        # v4: symptom & treatment log (Evidence Map)
+        _alter_safe(conn, "ALTER TABLE claims ADD COLUMN symptom_log TEXT DEFAULT '[]'")
+        with conn:
+            conn.execute("UPDATE app_settings SET value='4' WHERE key='db_version'")
+        log.info("Migrated to DB version 4")
 
 
 def _alter_safe(conn, sql: str):

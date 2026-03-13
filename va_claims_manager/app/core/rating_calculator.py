@@ -61,6 +61,66 @@ def _round_to_nearest_10(value: float) -> int:
     return int((value + 5) // 10) * 10
 
 
+def check_tdiu_eligibility(individual_ratings: list[int]) -> dict:
+    """
+    Check TDIU (Total Disability based on Individual Unemployability) eligibility.
+
+    Per 38 CFR § 4.16:
+      - One disability rated at 60%+ (single disability schedular), OR
+      - Combined rating 70%+ with at least one disability rated 40%+
+
+    Args:
+        individual_ratings: List of individual disability percentages.
+
+    Returns:
+        dict with: eligible (bool), reason (str), criteria_met (str | None)
+    """
+    if not individual_ratings:
+        return {"eligible": False, "reason": "No disability ratings entered.", "criteria_met": None}
+
+    clean = sorted([max(0, min(100, r)) for r in individual_ratings], reverse=True)
+    max_single = clean[0]
+    combined = combined_rating(clean)
+
+    if max_single >= 60:
+        return {
+            "eligible": True,
+            "reason": (
+                f"Single disability at {max_single}% meets the 60% threshold for TDIU "
+                f"(38 CFR § 4.16(a)).\n"
+                f"File VA Form 21-8940 (Unemployability Application) and VA Form 21-4192 "
+                f"(Employment Verification from last employer)."
+            ),
+            "criteria_met": "single_60",
+        }
+
+    if combined >= 70 and max_single >= 40:
+        return {
+            "eligible": True,
+            "reason": (
+                f"Combined rating {combined}% (≥70%) with primary disability at {max_single}% "
+                f"(≥40%) meets multi-disability TDIU criteria (38 CFR § 4.16(a)).\n"
+                f"File VA Form 21-8940 (Unemployability Application) and VA Form 21-4192 "
+                f"(Employment Verification from last employer)."
+            ),
+            "criteria_met": "combined_70_40",
+        }
+
+    # Near-miss hints
+    if max_single >= 40 and combined < 70:
+        note = (
+            f"Primary disability at {max_single}% qualifies as lead — need combined ≥70% "
+            f"(currently {combined}%, need {70 - combined}% more)."
+        )
+    else:
+        note = (
+            f"TDIU not yet met. Need: one disability ≥60%, OR combined ≥70% with one ≥40%.\n"
+            f"Currently: highest single = {max_single}%, combined = {combined}%."
+        )
+
+    return {"eligible": False, "reason": note, "criteria_met": None}
+
+
 def rating_summary(ratings: list[int]) -> dict:
     """
     Return a human-readable summary of the combined rating calculation.

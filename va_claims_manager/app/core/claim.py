@@ -43,6 +43,11 @@ class Claim:
     effective_date_basis: str = ""
     # Secondary condition linking (v2)
     secondary_to_claim_id: Optional[int] = None
+    # Continuity of symptomatology (v3)
+    first_treatment_date: str = ""
+    continuity_notes: str = ""
+    # Symptom & Treatment Log — Evidence Map (v4)
+    symptom_log: str = "[]"
 
     @property
     def triangle_complete(self) -> bool:
@@ -126,4 +131,7 @@ class Claim:
             effective_date=row["effective_date"] if "effective_date" in keys else "",
             effective_date_basis=row["effective_date_basis"] if "effective_date_basis" in keys else "",
             secondary_to_claim_id=row["secondary_to_claim_id"] if "secondary_to_claim_id" in keys else None,
+            first_treatment_date=row["first_treatment_date"] if "first_treatment_date" in keys else "",
+            continuity_notes=row["continuity_notes"] if "continuity_notes" in keys else "",
+            symptom_log=row["symptom_log"] if "symptom_log" in keys else "[]",
         )

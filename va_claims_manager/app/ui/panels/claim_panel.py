@@ -6,18 +6,23 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
     QListWidget, QListWidgetItem, QFrame, QLineEdit, QComboBox,
     QTextEdit, QCheckBox, QScrollArea, QSplitter, QGroupBox,
-    QSpinBox, QMessageBox, QSizePolicy
+    QSpinBox, QMessageBox, QSizePolicy,
+    QTableWidget, QTableWidgetItem, QHeaderView, QAbstractItemView,
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QColor, QFont
 from PyQt6.QtWidgets import QCompleter
 
-from app.config import BODY_SYSTEMS, CLAIM_TYPES, VASRD_CODES_PATH
+from app.config import BODY_SYSTEMS, CLAIM_TYPES, VASRD_CODES_PATH, PACT_ACT_PATH
 from app.core.claim import Claim
 from app.ui.widgets.triangle_widget import TriangleWidget
 from app.ui.dialogs.cp_prep_dialog import CPPrepDialog
+from app.ui.dialogs.buddy_statement_dialog import BuddyStatementDialog
+from app.ui.dialogs.nexus_letter_dialog import NexusLetterDialog
+from app.ui.dialogs.statement_4138_dialog import Statement4138Dialog
 import app.db.repositories.claim_repo as claim_repo
 import app.db.repositories.document_repo as doc_repo
+import app.db.repositories.veteran_repo as veteran_repo
 
 
 class ClaimPanel(QWidget):
@@ -26,8 +31,11 @@ class ClaimPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._veteran_id: int | None = None
+        self._veteran = None           # Veteran object for era/date access
         self._current_claim_id: int | None = None
         self._vasrd_codes: list[dict] = self._load_vasrd()
+        self._pact_entries: list[dict] = self._load_pact_entries()
+        self._current_pact_basis: str = ""   # filled when PACT match found
         self._build_ui()
 
     # ------------------------------------------------------------------
@@ -103,6 +111,27 @@ class ClaimPanel(QWidget):
         )
         status_row.addWidget(self._status_badge)
         status_row.addStretch()
+
+        self._btn_nexus_letter = QPushButton("Nexus Letter")
+        self._btn_nexus_letter.setFixedWidth(110)
+        self._btn_nexus_letter.setToolTip("Generate a physician request letter for a nexus opinion (IMO)")
+        self._btn_nexus_letter.setVisible(False)
+        self._btn_nexus_letter.clicked.connect(self._on_nexus_letter)
+        status_row.addWidget(self._btn_nexus_letter)
+
+        self._btn_statement = QPushButton("Statement (21-4138)")
+        self._btn_statement.setFixedWidth(150)
+        self._btn_statement.setToolTip("Generate a draft VA Form 21-4138 personal statement for this claim")
+        self._btn_statement.setVisible(False)
+        self._btn_statement.clicked.connect(self._on_statement_4138)
+        status_row.addWidget(self._btn_statement)
+
+        self._btn_buddy = QPushButton("Buddy Statement")
+        self._btn_buddy.setFixedWidth(135)
+        self._btn_buddy.setToolTip("Generate a pre-filled VA Form 21-10210 buddy statement template")
+        self._btn_buddy.setVisible(False)
+        self._btn_buddy.clicked.connect(self._on_buddy_statement)
+        status_row.addWidget(self._btn_buddy)
 
         self._btn_cp_prep = QPushButton("C&P Exam Prep")
         self._btn_cp_prep.setFixedWidth(130)
@@ -184,6 +213,30 @@ class ClaimPanel(QWidget):
         self._presumptive_widget.setLayout(self._presumptive_row)
         self._presumptive_widget.setVisible(False)
         info_form.addWidget(self._presumptive_widget)
+
+        # PACT Act presumptive suggestion banner (shown when condition qualifies)
+        self._pact_banner = QFrame()
+        self._pact_banner.setStyleSheet(
+            "QFrame { background: #fff8e1; border: 1px solid #ffc107; border-radius: 6px; }"
+        )
+        pact_bl = QHBoxLayout(self._pact_banner)
+        pact_bl.setContentsMargins(10, 7, 10, 7)
+        pact_bl.setSpacing(8)
+        pact_icon = QLabel("⚡")
+        pact_icon.setStyleSheet("font-size: 18px; color: #b8610a; background: transparent;")
+        pact_bl.addWidget(pact_icon)
+        self._pact_banner_text = QLabel("")
+        self._pact_banner_text.setWordWrap(True)
+        self._pact_banner_text.setStyleSheet(
+            "color: #5d4037; font-size: 12px; background: transparent;"
+        )
+        pact_bl.addWidget(self._pact_banner_text, 1)
+        self._btn_apply_presumptive = QPushButton("Set as Presumptive")
+        self._btn_apply_presumptive.setFixedWidth(145)
+        self._btn_apply_presumptive.clicked.connect(self._apply_pact_presumptive)
+        pact_bl.addWidget(self._btn_apply_presumptive)
+        self._pact_banner.setVisible(False)
+        info_form.addWidget(self._pact_banner)
 
         row5 = QHBoxLayout()
         row5.addWidget(QLabel("Estimated %"))
@@ -324,6 +377,46 @@ class ClaimPanel(QWidget):
             risk_layout.addWidget(lbl)
         rv.addWidget(self._risk_card)
 
+        # ---- Continuity of Symptomatology ----
+        rv.addWidget(self._section_label("Continuity of Symptomatology"))
+        cont_card = self._card()
+        cont_layout = QVBoxLayout(cont_card)
+        cont_layout.setContentsMargins(16, 12, 16, 12)
+        cont_layout.setSpacing(8)
+
+        cont_hint = QLabel(
+            "Document the gap between separation and first treatment. "
+            "A gap > 1 year triggers a continuity risk that buddy statements can help bridge."
+        )
+        cont_hint.setWordWrap(True)
+        cont_hint.setStyleSheet("color: #555e6e; font-size: 11px;")
+        cont_layout.addWidget(cont_hint)
+
+        cont_date_row = QHBoxLayout()
+        cont_date_row.addWidget(QLabel("First Treatment Date:"))
+        self._first_treatment_date = QLineEdit()
+        self._first_treatment_date.setPlaceholderText("YYYY-MM-DD")
+        self._first_treatment_date.setFixedWidth(140)
+        self._first_treatment_date.textChanged.connect(self._update_continuity_gap)
+        cont_date_row.addWidget(self._first_treatment_date)
+        self._continuity_gap_lbl = QLabel("")
+        self._continuity_gap_lbl.setStyleSheet("font-size: 12px; color: #555e6e; margin-left: 8px;")
+        cont_date_row.addWidget(self._continuity_gap_lbl)
+        cont_date_row.addStretch()
+        cont_layout.addLayout(cont_date_row)
+
+        cont_notes_lbl = QLabel("Continuity Notes (how symptoms persisted after separation):")
+        cont_notes_lbl.setStyleSheet("color: #555e6e; font-size: 11px;")
+        cont_layout.addWidget(cont_notes_lbl)
+        self._continuity_notes = QTextEdit()
+        self._continuity_notes.setPlaceholderText(
+            "e.g. Symptoms began during deployment 2004, persisted untreated until 2008 VA visit. "
+            "Buddy statements from unit members available to bridge gap."
+        )
+        self._continuity_notes.setMaximumHeight(70)
+        cont_layout.addWidget(self._continuity_notes)
+        rv.addWidget(cont_card)
+
         # ---- Evidence Documents ----
         self._evidence_header = self._section_label("Identified Evidence Documents")
         rv.addWidget(self._evidence_header)
@@ -339,6 +432,63 @@ class ClaimPanel(QWidget):
         self._evidence_empty_lbl.setStyleSheet("color: #888; font-size: 12px; padding: 6px;")
         self._evidence_layout.addWidget(self._evidence_empty_lbl)
         rv.addWidget(self._evidence_card)
+
+        # ---- Symptom & Treatment Log ----
+        rv.addWidget(self._section_label("Symptom & Treatment Log  (\"Evidence Map\")"))
+        symp_card = self._card()
+        symp_layout = QVBoxLayout(symp_card)
+        symp_layout.setContentsMargins(12, 10, 12, 10)
+        symp_layout.setSpacing(6)
+
+        symp_inst = QLabel(
+            "Log each medical record entry that supports this claim. "
+            "Reference the source document and page number so the VA rater can find it directly. "
+            "This data auto-fills the Statement in Support of Claim (21-4138) generator."
+        )
+        symp_inst.setWordWrap(True)
+        symp_inst.setStyleSheet("font-size: 11px; color: #666; margin-bottom: 4px;")
+        symp_layout.addWidget(symp_inst)
+
+        self._symptom_table = QTableWidget()
+        self._symptom_table.setColumnCount(5)
+        self._symptom_table.setHorizontalHeaderLabels([
+            "Date", "Source & Page #", "Complaint / Symptom",
+            "Diagnosis / Doctor's Notes", "Treatment / Limitations"
+        ])
+        self._symptom_table.horizontalHeader().setSectionResizeMode(0, QHeaderView.ResizeMode.Fixed)
+        self._symptom_table.horizontalHeader().setSectionResizeMode(1, QHeaderView.ResizeMode.Fixed)
+        self._symptom_table.horizontalHeader().setSectionResizeMode(2, QHeaderView.ResizeMode.Stretch)
+        self._symptom_table.horizontalHeader().setSectionResizeMode(3, QHeaderView.ResizeMode.Stretch)
+        self._symptom_table.horizontalHeader().setSectionResizeMode(4, QHeaderView.ResizeMode.Stretch)
+        self._symptom_table.setColumnWidth(0, 90)
+        self._symptom_table.setColumnWidth(1, 130)
+        self._symptom_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self._symptom_table.setAlternatingRowColors(True)
+        self._symptom_table.setFixedHeight(160)
+        self._symptom_table.setStyleSheet(
+            "QTableWidget { font-size: 12px; gridline-color: #ebebeb; }"
+            "QHeaderView::section { background: #f5f7fa; font-size: 11px; "
+            "font-weight: bold; color: #555e6e; padding: 3px 5px; "
+            "border-bottom: 2px solid #dde2e8; }"
+        )
+        self._symptom_table.verticalHeader().setVisible(False)
+        symp_layout.addWidget(self._symptom_table)
+
+        symp_btn_row = QHBoxLayout()
+        symp_add_btn = QPushButton("+ Add Row")
+        symp_add_btn.setFixedHeight(26)
+        symp_add_btn.setFixedWidth(90)
+        symp_add_btn.clicked.connect(self._symptom_add_row)
+        symp_btn_row.addWidget(symp_add_btn)
+
+        symp_del_btn = QPushButton("Delete Row")
+        symp_del_btn.setFixedHeight(26)
+        symp_del_btn.setFixedWidth(90)
+        symp_del_btn.clicked.connect(self._symptom_delete_row)
+        symp_btn_row.addWidget(symp_del_btn)
+        symp_btn_row.addStretch()
+        symp_layout.addLayout(symp_btn_row)
+        rv.addWidget(symp_card)
 
         # ---- Notes ----
         rv.addWidget(self._section_label("Claim Notes"))
@@ -374,10 +524,57 @@ class ClaimPanel(QWidget):
 
     def load_veteran(self, veteran_id: int | None):
         self._veteran_id = veteran_id
+        self._veteran = veteran_repo.get_by_id(veteran_id) if veteran_id else None
         self._current_claim_id = None
         self._refresh_list()
         self._refresh_secondary_options()
         self._clear_editor()
+
+    def prefill_new_claim(self, condition: dict):
+        """
+        Pre-fill the claim editor for a new claim from a condition dict
+        (as emitted by ConditionsBrowserPanel.add_claim_requested).
+        """
+        if not self._veteran_id:
+            return
+        self._claims_list.clearSelection()
+        self._clear_editor()
+        self._claim_title.setText("New Claim")
+        self._btn_save.setEnabled(True)
+
+        name = condition.get("name", "")
+        code = condition.get("code", "")
+        system = condition.get("system", "")
+        is_presumptive = condition.get("is_presumptive", False)
+        basis = condition.get("presumptive_basis", "")
+
+        # Try to match known condition in dropdown; else set free text
+        self._condition_name.blockSignals(True)
+        matched = False
+        for i in range(self._condition_name.count()):
+            entry = self._condition_name.itemData(i)
+            if entry and entry.get("name") == name:
+                self._condition_name.setCurrentIndex(i)
+                matched = True
+                break
+        if not matched:
+            self._condition_name.setCurrentText(name)
+        self._condition_name.blockSignals(False)
+
+        if code:
+            self._vasrd_code.setText(code)
+            self._vasrd_hint.setText(name)
+        if system:
+            self._set_combo(self._body_system, system)
+
+        if is_presumptive:
+            idx = self._claim_type.findData("presumptive")
+            if idx >= 0:
+                self._claim_type.setCurrentIndex(idx)
+            self._presumptive_basis.setText(basis)
+            self._presumptive_widget.setVisible(True)
+
+        self._condition_name.setFocus()
 
     # ------------------------------------------------------------------
     # Helpers
@@ -484,6 +681,127 @@ class ClaimPanel(QWidget):
         is_secondary = self._nexus_type_combo.currentData() == "secondary"
         self._secondary_widget.setVisible(is_secondary)
 
+    # ------------------------------------------------------------------
+    # PACT Act Presumptive Detection
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _load_pact_entries() -> list[dict]:
+        """Load pact_act_conditions.json and return list of {era_keywords, condition_keywords, label, basis}."""
+        try:
+            with open(PACT_ACT_PATH) as f:
+                data = json.load(f)
+        except Exception:
+            return []
+
+        entries = []
+        for _key, category in data.items():
+            conditions_lower = [c.lower() for c in category.get("conditions", [])]
+            # Add short-form keywords (first word of each condition)
+            extra = []
+            for c in conditions_lower:
+                parts = c.split()
+                if len(parts) >= 2:
+                    extra.append(parts[0])
+            entries.append({
+                "era_keywords": [e.lower() for e in category.get("exposure_eras", [])],
+                "condition_keywords": conditions_lower + extra,
+                "label": category.get("label", "Presumptive Condition"),
+                "basis": category.get("label", "Presumptive"),
+            })
+        return entries
+
+    def _check_pact_suggestion(self, condition_text: str):
+        """Show PACT presumptive banner if the condition and veteran era match."""
+        if not condition_text or not self._veteran:
+            self._pact_banner.setVisible(False)
+            return
+
+        era_lower = (self._veteran.era or "").lower()
+        cond_lower = condition_text.lower()
+
+        matched_label = ""
+        matched_basis = ""
+        for entry in self._pact_entries:
+            # Check era first
+            era_match = any(ek in era_lower for ek in entry["era_keywords"])
+            if not era_match:
+                continue
+            # Check condition name
+            cond_match = any(
+                ck in cond_lower or cond_lower in ck
+                for ck in entry["condition_keywords"]
+            )
+            if cond_match:
+                matched_label = entry["label"]
+                matched_basis = entry["basis"]
+                break
+
+        if matched_label:
+            self._current_pact_basis = matched_basis
+            self._pact_banner_text.setText(
+                f"<b>Presumptive match:</b> {matched_label}  — "
+                f"This condition may qualify without a nexus letter. "
+                f"Click 'Set as Presumptive' to update the claim type."
+            )
+            self._pact_banner.setVisible(True)
+        else:
+            self._current_pact_basis = ""
+            self._pact_banner.setVisible(False)
+
+    def _apply_pact_presumptive(self):
+        """Switch claim type to presumptive and fill in the PACT basis."""
+        idx = self._claim_type.findData("presumptive")
+        if idx >= 0:
+            self._claim_type.setCurrentIndex(idx)
+        if self._current_pact_basis:
+            self._presumptive_basis.setText(self._current_pact_basis)
+        self._presumptive_widget.setVisible(True)
+        self._pact_banner.setVisible(False)
+
+    # ------------------------------------------------------------------
+    # Continuity gap calculation
+    # ------------------------------------------------------------------
+
+    def _update_continuity_gap(self):
+        """Recompute and display the separation-to-first-treatment gap."""
+        from datetime import date
+        ft_text = self._first_treatment_date.text().strip()
+        sep_text = (self._veteran.separation_date or "") if self._veteran else ""
+
+        if not ft_text or not sep_text:
+            self._continuity_gap_lbl.setText("")
+            return
+
+        try:
+            sep_date = date.fromisoformat(sep_text[:10])
+            ft_date = date.fromisoformat(ft_text[:10])
+        except ValueError:
+            self._continuity_gap_lbl.setText("")
+            return
+
+        gap_days = (ft_date - sep_date).days
+        if gap_days < 0:
+            self._continuity_gap_lbl.setText("(date is before separation)")
+            self._continuity_gap_lbl.setStyleSheet("font-size: 12px; color: #777;")
+            return
+
+        years = gap_days // 365
+        months = (gap_days % 365) // 30
+        if years > 0:
+            gap_str = f"{years}y {months}m gap"
+        else:
+            gap_str = f"{months} month(s) gap"
+
+        if gap_days > 365:
+            self._continuity_gap_lbl.setText(
+                f"  ⚠  {gap_str} — consider buddy statement to bridge continuity gap"
+            )
+            self._continuity_gap_lbl.setStyleSheet("font-size: 12px; color: #c0392b; font-weight: bold;")
+        else:
+            self._continuity_gap_lbl.setText(f"  ✓  {gap_str}")
+            self._continuity_gap_lbl.setStyleSheet("font-size: 12px; color: #1a7a4a;")
+
     def _refresh_secondary_options(self, exclude_id: int | None = None):
         """Repopulate the secondary-to dropdown with other claims for this veteran."""
         self._secondary_combo.blockSignals(True)
@@ -497,6 +815,83 @@ class ClaimPanel(QWidget):
                         label += f"  (DC {c.vasrd_code})"
                     self._secondary_combo.addItem(label, c.id)
         self._secondary_combo.blockSignals(False)
+
+    def _symptom_add_row(self):
+        """Append a blank row to the symptom log table."""
+        row = self._symptom_table.rowCount()
+        self._symptom_table.insertRow(row)
+        for col in range(5):
+            self._symptom_table.setItem(row, col, QTableWidgetItem(""))
+        self._symptom_table.setRowHeight(row, 28)
+
+    def _symptom_delete_row(self):
+        """Delete the currently selected row from the symptom log table."""
+        selected = self._symptom_table.selectedItems()
+        if selected:
+            self._symptom_table.removeRow(self._symptom_table.currentRow())
+
+    def _load_symptom_log(self, json_str: str):
+        """Populate the symptom table from a JSON string."""
+        self._symptom_table.setRowCount(0)
+        try:
+            entries = json.loads(json_str or "[]")
+        except Exception:
+            entries = []
+        for entry in entries:
+            row = self._symptom_table.rowCount()
+            self._symptom_table.insertRow(row)
+            self._symptom_table.setItem(row, 0, QTableWidgetItem(entry.get("date", "")))
+            self._symptom_table.setItem(row, 1, QTableWidgetItem(entry.get("source", "")))
+            self._symptom_table.setItem(row, 2, QTableWidgetItem(entry.get("complaint", "")))
+            self._symptom_table.setItem(row, 3, QTableWidgetItem(entry.get("diagnosis", "")))
+            self._symptom_table.setItem(row, 4, QTableWidgetItem(entry.get("treatment", "")))
+            self._symptom_table.setRowHeight(row, 28)
+
+    def _get_symptom_log_json(self) -> str:
+        """Serialize the symptom table to a JSON string."""
+        entries = []
+        for row in range(self._symptom_table.rowCount()):
+            def cell(c):
+                item = self._symptom_table.item(row, c)
+                return item.text().strip() if item else ""
+            entries.append({
+                "date": cell(0),
+                "source": cell(1),
+                "complaint": cell(2),
+                "diagnosis": cell(3),
+                "treatment": cell(4),
+            })
+        return json.dumps(entries, ensure_ascii=False)
+
+    def _on_statement_4138(self):
+        """Open the VA Form 21-4138 draft generator for the current claim."""
+        if self._current_claim_id is None:
+            return
+        # Save symptom log to claim before opening so dialog sees latest data
+        claim = claim_repo.get_by_id(self._current_claim_id)
+        if claim:
+            claim.symptom_log = self._get_symptom_log_json()
+            dlg = Statement4138Dialog(claim, veteran=self._veteran, parent=self)
+            dlg.exec()
+
+    def _on_nexus_letter(self):
+        """Open the nexus letter request template generator for the current claim."""
+        if self._current_claim_id is None:
+            return
+        claim = claim_repo.get_by_id(self._current_claim_id)
+        if claim:
+            dlg = NexusLetterDialog(claim, veteran=self._veteran, parent=self)
+            dlg.exec()
+
+    def _on_buddy_statement(self):
+        """Open the buddy statement template generator for the current claim."""
+        if self._current_claim_id is None:
+            return
+        claim = claim_repo.get_by_id(self._current_claim_id)
+        if claim:
+            veteran = veteran_repo.get_by_id(self._veteran_id) if self._veteran_id else None
+            dlg = BuddyStatementDialog(claim, veteran=veteran, parent=self)
+            dlg.exec()
 
     def _on_cp_prep(self):
         """Open the C&P Exam Prep sheet for the currently loaded claim."""
@@ -540,6 +935,8 @@ class ClaimPanel(QWidget):
 
         # When user picks from the dropdown, auto-fill VASRD code + body system
         self._condition_name.currentIndexChanged.connect(self._on_condition_selected)
+        # Also check PACT when user types freely
+        self._condition_name.lineEdit().textChanged.connect(self._check_pact_suggestion)
 
     def _on_condition_selected(self, index: int):
         """Auto-fill VASRD code and body system when a known condition is chosen."""
@@ -553,6 +950,8 @@ class ClaimPanel(QWidget):
         self._vasrd_hint.setText(entry.get("name", ""))
         # Fill body system
         self._set_combo(self._body_system, entry.get("system", ""))
+        # Check PACT presumptive eligibility
+        self._check_pact_suggestion(entry.get("name", ""))
 
     def _get_condition_name_text(self) -> str:
         """Return the plain condition name (strip code/system suffix if picked from list)."""
@@ -837,6 +1236,17 @@ class ClaimPanel(QWidget):
             if idx >= 0:
                 self._secondary_combo.setCurrentIndex(idx)
 
+        # Continuity of symptomatology
+        self._first_treatment_date.setText(claim.first_treatment_date or "")
+        self._continuity_notes.setPlainText(claim.continuity_notes or "")
+        self._update_continuity_gap()
+
+        # Symptom & Treatment Log
+        self._load_symptom_log(claim.symptom_log or "[]")
+
+        # Check PACT suggestion for this condition
+        self._check_pact_suggestion(claim.condition_name)
+
         self._update_triangle_preview()
         self._update_risk_labels(claim)
         self._load_evidence(claim.id)
@@ -851,7 +1261,10 @@ class ClaimPanel(QWidget):
         )
         self._btn_save.setEnabled(True)
         self._btn_delete_claim.setVisible(True)
+        self._btn_nexus_letter.setVisible(True)
+        self._btn_statement.setVisible(True)
         self._btn_cp_prep.setVisible(True)
+        self._btn_buddy.setVisible(True)
 
     def _clear_editor(self):
         self._current_claim_id = None
@@ -880,9 +1293,17 @@ class ClaimPanel(QWidget):
         self._secondary_combo.setCurrentIndex(0)
         self._triangle.set_state(False, False, False)
         self._status_badge.setText("")
+        self._first_treatment_date.clear()
+        self._continuity_notes.clear()
+        self._continuity_gap_lbl.setText("")
+        self._symptom_table.setRowCount(0)
+        self._pact_banner.setVisible(False)
         self._btn_save.setEnabled(False)
         self._btn_delete_claim.setVisible(False)
+        self._btn_nexus_letter.setVisible(False)
+        self._btn_statement.setVisible(False)
         self._btn_cp_prep.setVisible(False)
+        self._btn_buddy.setVisible(False)
 
     # ------------------------------------------------------------------
     # Slots
@@ -942,6 +1363,9 @@ class ClaimPanel(QWidget):
             effective_date=self._effective_date.text().strip(),
             effective_date_basis=self._effective_date_basis.currentData() or "",
             secondary_to_claim_id=secondary_id,
+            first_treatment_date=self._first_treatment_date.text().strip(),
+            continuity_notes=self._continuity_notes.toPlainText().strip(),
+            symptom_log=self._get_symptom_log_json(),
         )
         c.compute_risks()
 
@@ -956,7 +1380,10 @@ class ClaimPanel(QWidget):
         self._update_risk_labels(c)
         self._refresh_list()
         self._refresh_secondary_options(exclude_id=self._current_claim_id)
+        self._btn_nexus_letter.setVisible(True)
+        self._btn_statement.setVisible(True)
         self._btn_cp_prep.setVisible(True)
+        self._btn_buddy.setVisible(True)
         self.claims_updated.emit()
 
     def _on_delete_claim(self):
