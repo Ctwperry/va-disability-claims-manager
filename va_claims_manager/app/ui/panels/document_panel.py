@@ -271,11 +271,7 @@ class DocumentPanel(QWidget):
         action = menu.exec(self._table.mapToGlobal(pos))
 
         if action == action_open:
-            doc = doc_repo.get_by_id(doc_id)
-            if doc and Path(doc.filepath).exists():
-                os.startfile(str(Path(doc.filepath).parent))
-            else:
-                QMessageBox.warning(self, "Not Found", "The file could not be located.")
+            self._open_file_location(doc_id)
 
         elif action == action_delete:
             doc = doc_repo.get_by_id(doc_id)
@@ -291,6 +287,20 @@ class DocumentPanel(QWidget):
                 doc_repo.delete(doc_id)
                 self._refresh_table()
                 self.documents_updated.emit()
+
+    def _open_file_location(self, doc_id: int):
+        from app.core.path_guard import safe_file_path
+        doc = doc_repo.get_by_id(doc_id)
+        if not doc:
+            QMessageBox.warning(self, "Not Found", "The file could not be located.")
+            return
+        # Validate the file before opening its parent — rejects symlinks and
+        # missing paths before they reach the OS file browser.
+        safe_file = safe_file_path(Path(doc.filepath))
+        if safe_file is None:
+            QMessageBox.warning(self, "Not Found", "The file could not be located.")
+            return
+        os.startfile(str(safe_file.parent))
 
     # ------------------------------------------------------------------
     # Table refresh

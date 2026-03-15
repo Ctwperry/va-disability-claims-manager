@@ -329,14 +329,15 @@ def _write_forms_checklist(path: Path, veteran, claims):
 
 
 def _copy_doc(doc, dest_dir: Path):
-    src = Path(doc.filepath)
-    if src.exists():
-        try:
-            shutil.copy2(str(src), str(dest_dir / src.name))
-        except Exception as exc:
-            log.warning("Could not copy %s: %s", src, exc)
-    else:
-        log.warning("Source file not found: %s", src)
+    from app.core.path_guard import safe_file_path
+    src = safe_file_path(Path(doc.filepath))
+    if src is None:
+        log.warning("Skipping unsafe or missing filepath: %s", doc.filepath)
+        return
+    try:
+        shutil.copy2(str(src), str(dest_dir / src.name))
+    except Exception as exc:
+        log.warning("Could not copy %s: %s", src, exc)
 
 
 def _role_to_folder(role: str) -> str:
