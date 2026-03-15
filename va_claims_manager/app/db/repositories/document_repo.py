@@ -47,25 +47,18 @@ def update_status(doc_id: int, status: str, error: str = "", page_count: int = -
 def update_metadata(doc_id: int, doc_type: str = None, doc_date: str = None,
                     source_facility: str = None, author: str = None):
     conn = get_connection()
-    fields = []
-    vals = []
-    if doc_type is not None:
-        fields.append("doc_type=?")
-        vals.append(doc_type)
-    if doc_date is not None:
-        fields.append("doc_date=?")
-        vals.append(doc_date)
-    if source_facility is not None:
-        fields.append("source_facility=?")
-        vals.append(source_facility)
-    if author is not None:
-        fields.append("author=?")
-        vals.append(author)
-    if not fields:
-        return
-    vals.append(doc_id)
     with conn:
-        conn.execute(f"UPDATE documents SET {','.join(fields)} WHERE id=?", vals)
+        conn.execute(
+            """
+            UPDATE documents SET
+                doc_type        = COALESCE(?, doc_type),
+                doc_date        = COALESCE(?, doc_date),
+                source_facility = COALESCE(?, source_facility),
+                author          = COALESCE(?, author)
+            WHERE id=?
+            """,
+            (doc_type, doc_date, source_facility, author, doc_id),
+        )
 
 
 def hash_exists(veteran_id: int, file_hash: str) -> bool:
@@ -85,18 +78,19 @@ def get_by_id(doc_id: int) -> Optional[Document]:
 
 def get_all(veteran_id: int, doc_type: str = None, claim_id: int = None) -> list[Document]:
     conn = get_connection()
-    where = ["veteran_id=?"]
-    params: list = [veteran_id]
-    if doc_type:
-        where.append("doc_type=?")
-        params.append(doc_type)
-    if claim_id is not None:
-        where.append("claim_id=?")
-        params.append(claim_id)
-    rows = conn.execute(
-        f"SELECT * FROM documents WHERE {' AND '.join(where)} ORDER BY created_at DESC",
-        params,
-    ).fetchall()
+    if doc_type and claim_id is not None:
+        sql = "SELECT * FROM documents WHERE veteran_id=? AND doc_type=? AND claim_id=? ORDER BY created_at DESC"
+        params = (veteran_id, doc_type, claim_id)
+    elif doc_type:
+        sql = "SELECT * FROM documents WHERE veteran_id=? AND doc_type=? ORDER BY created_at DESC"
+        params = (veteran_id, doc_type)
+    elif claim_id is not None:
+        sql = "SELECT * FROM documents WHERE veteran_id=? AND claim_id=? ORDER BY created_at DESC"
+        params = (veteran_id, claim_id)
+    else:
+        sql = "SELECT * FROM documents WHERE veteran_id=? ORDER BY created_at DESC"
+        params = (veteran_id,)
+    rows = conn.execute(sql, params).fetchall()
     return [Document.from_row(r) for r in rows]
 
 
