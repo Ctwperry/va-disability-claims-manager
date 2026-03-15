@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import QCompleter
 
 from app.config import BODY_SYSTEMS, CLAIM_TYPES, PACT_ACT_PATH
 from app.core.claim import Claim
-from app.services.conditions_service import load_vasrd_codes
+from app.services.conditions_service import load_vasrd_codes, is_known_vasrd_code
 from app.ui.widgets.triangle_widget import TriangleWidget
 from app.ui.widgets.symptom_log_widget import SymptomLogWidget
 from app.ui.widgets.evidence_panel import EvidencePanel
@@ -620,7 +620,19 @@ class ClaimPanel(QWidget):
             if entry["code"] == code.strip():
                 hint = entry["name"]
                 break
-        self._vasrd_hint.setText(hint)
+
+        if code.strip() and not hint:
+            # Unrecognized — show warning state
+            self._vasrd_hint.setText("⚠ Unrecognized code")
+            self._vasrd_hint.setStyleSheet("color: #c0392b; font-size: 11px;")
+            self._vasrd_code.setStyleSheet(
+                "QLineEdit { border: 1px solid #c0392b; border-radius: 3px; }"
+            )
+        else:
+            # Valid or empty — restore normal state
+            self._vasrd_hint.setText(hint)
+            self._vasrd_hint.setStyleSheet("color: #0070c0; font-size: 11px;")
+            self._vasrd_code.setStyleSheet("")
 
     def _on_claim_type_changed(self):
         is_presumptive = self._claim_type.currentData() == "presumptive"
@@ -1035,6 +1047,20 @@ class ClaimPanel(QWidget):
         if not name:
             QMessageBox.warning(self, "Validation", "Condition name is required.")
             return
+
+        code = self._vasrd_code.text().strip()
+        if code and not is_known_vasrd_code(code, self._vasrd_codes):
+            reply = QMessageBox.warning(
+                self,
+                "Unrecognized VASRD Code",
+                f"'{code}' is not in the bundled VASRD code list.\n\n"
+                "This may be a newer code not yet in the database, or a typo.\n\n"
+                "Save the claim with this code anyway?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if reply != QMessageBox.StandardButton.Yes:
+                return
 
         secondary_id = (
             self._secondary_combo.currentData()
