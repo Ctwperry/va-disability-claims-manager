@@ -11,6 +11,7 @@ Public API:
 """
 from __future__ import annotations
 import json
+from app.core.json_guard import parse_symptom_log
 
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
@@ -90,10 +91,7 @@ class SymptomLogWidget(QWidget):
     def load_data(self, json_str: str):
         """Populate from a JSON string (list of entry dicts)."""
         self._table.setRowCount(0)
-        try:
-            entries = json.loads(json_str or "[]")
-        except Exception:
-            entries = []
+        entries = parse_symptom_log(json_str)
         for entry in entries:
             row = self._table.rowCount()
             self._table.insertRow(row)

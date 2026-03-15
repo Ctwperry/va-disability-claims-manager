@@ -12,6 +12,7 @@ Covers both direct and secondary service connection claims, incorporating:
 """
 from __future__ import annotations
 import json
+from app.core.json_guard import parse_symptom_log
 from datetime import date
 
 from PyQt6.QtWidgets import (
@@ -308,16 +309,12 @@ class Statement4138Dialog(QDialog):
 
         # Build symptom log evidence references
         log_entries = []
-        try:
-            entries = json.loads(c.symptom_log or "[]")
-            for e in entries[:6]:  # reference up to 6 entries
-                d = e.get("date", "")
-                src = e.get("source", "")
-                dx = e.get("diagnosis", "")
-                if d and src:
-                    log_entries.append(f"  • {d} — {src}: {dx}")
-        except Exception:
-            pass
+        for e in parse_symptom_log(c.symptom_log)[:6]:  # reference up to 6 entries
+            d = e.get("date", "")
+            src = e.get("source", "")
+            dx = e.get("diagnosis", "")
+            if d and src:
+                log_entries.append(f"  • {d} — {src}: {dx}")
 
         evidence_section = ""
         if log_entries:
