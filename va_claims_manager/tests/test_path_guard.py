@@ -5,6 +5,25 @@ from pathlib import Path
 import pytest
 
 
+# Creating symlinks on Windows requires SeCreateSymbolicLinkPrivilege
+# (Administrator or Developer Mode). Skip symlink tests when unavailable.
+def _symlinks_available() -> bool:
+    try:
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "src"
+            src.write_bytes(b"x")
+            (Path(d) / "lnk").symlink_to(src)
+        return True
+    except OSError:
+        return False
+
+_SYMLINK_SKIP = pytest.mark.skipif(
+    not _symlinks_available(),
+    reason="Symlink creation requires elevated privileges on this Windows account"
+)
+
+
 # ── safe_file_path ────────────────────────────────────────────────────────────
 
 def test_safe_file_path_returns_resolved_for_regular_file(tmp_path):
@@ -27,6 +46,7 @@ def test_safe_file_path_returns_none_for_directory(tmp_path):
     assert result is None
 
 
+@_SYMLINK_SKIP
 def test_safe_file_path_returns_none_for_symlink_to_file(tmp_path):
     from app.core.path_guard import safe_file_path
     real = tmp_path / "real.pdf"
@@ -37,6 +57,7 @@ def test_safe_file_path_returns_none_for_symlink_to_file(tmp_path):
     assert result is None, "Symlinks must be rejected even when the target exists"
 
 
+@_SYMLINK_SKIP
 def test_safe_file_path_returns_none_for_symlink_to_sensitive_dir(tmp_path):
     from app.core.path_guard import safe_file_path
     link = tmp_path / "system_link"
@@ -69,6 +90,7 @@ def test_safe_dir_path_returns_none_for_file(tmp_path):
     assert result is None
 
 
+@_SYMLINK_SKIP
 def test_safe_dir_path_returns_none_for_symlink_to_dir(tmp_path):
     from app.core.path_guard import safe_dir_path
     real_dir = tmp_path / "real"

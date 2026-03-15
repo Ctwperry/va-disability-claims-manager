@@ -5,6 +5,21 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 import pytest
 
+def _symlinks_available() -> bool:
+    try:
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "src"; src.write_bytes(b"x")
+            (Path(d) / "lnk").symlink_to(src)
+        return True
+    except OSError:
+        return False
+
+_SYMLINK_SKIP = pytest.mark.skipif(
+    not _symlinks_available(),
+    reason="Symlink creation requires elevated privileges on this Windows account"
+)
+
 
 def _make_panel_and_doc(doc_filepath: str):
     """Instantiate a bare DocumentPanel and a mock Document."""
@@ -34,6 +49,7 @@ def test_open_file_location_calls_startfile_for_real_file(tmp_path):
     mock_os.startfile.assert_called_once_with(str(real_file.parent.resolve()))
 
 
+@_SYMLINK_SKIP
 def test_open_file_location_skips_symlinked_file(tmp_path):
     """os.startfile is NOT called when the filepath is a symlink."""
     import app.ui.panels.document_panel as mod

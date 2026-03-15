@@ -5,6 +5,21 @@ from pathlib import Path
 from unittest.mock import MagicMock
 import pytest
 
+def _symlinks_available() -> bool:
+    try:
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "src"; src.write_bytes(b"x")
+            (Path(d) / "lnk").symlink_to(src)
+        return True
+    except OSError:
+        return False
+
+_SYMLINK_SKIP = pytest.mark.skipif(
+    not _symlinks_available(),
+    reason="Symlink creation requires elevated privileges on this Windows account"
+)
+
 
 def _make_doc(filepath: str):
     doc = MagicMock()
@@ -28,6 +43,7 @@ def test_copy_doc_copies_real_file(tmp_path):
     assert (dest / "record.pdf").exists()
 
 
+@_SYMLINK_SKIP
 def test_copy_doc_skips_symlink(tmp_path):
     """A symlink is silently skipped — nothing is copied to dest."""
     from app.export.package_builder import _copy_doc
