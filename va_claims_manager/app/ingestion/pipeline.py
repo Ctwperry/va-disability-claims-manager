@@ -76,6 +76,7 @@ class _ExtractionResult:
     error: str = ""           # non-empty → extraction failed after hash
     pre_hash_error: str = ""  # non-empty → failed before / during hash
     is_unsupported: bool = False
+    cancelled: bool = False   # True when ingest was cancelled before this file completed
 
 
 # ---------------------------------------------------------------------------
@@ -87,6 +88,7 @@ def ingest_files(
     veteran_id: int,
     progress_cb: Callable[[int, int, str], None] | None = None,
     max_workers: int = MAX_EXTRACTION_WORKERS,
+    cancel_event=None,
 ) -> list[dict]:
     """
     Ingest a list of files for a given veteran.
@@ -132,12 +134,21 @@ def ingest_files(
         thread_name_prefix="ingest",
     ) as pool:
         for fp in filepaths:
-            future_to_path[pool.submit(_extract_file, fp)] = fp
+            future_to_path[pool.submit(_extract_file, fp, cancel_event)] = fp
 
         for fut in as_completed(future_to_path):
             ext: _ExtractionResult = fut.result()   # never raises — worker catches all
             completed += 1
             _progress(progress_cb, completed, total, f"Processing: {ext.filepath.name}")
+
+            # ---- Cancellation ----------------------------------------
+
+            if ext.cancelled:
+                results.append(_result(
+                    ext.filepath, "cancelled",
+                    message="Ingestion cancelled by user",
+                ))
+                continue
 
             # ---- Fast-path rejections --------------------------------
 
@@ -218,7 +229,7 @@ def ingest_files(
 # Worker — runs in a ThreadPoolExecutor thread
 # ---------------------------------------------------------------------------
 
-def _extract_file(filepath: Path) -> _ExtractionResult:
+def _extract_file(filepath: Path, cancel_event=None) -> _ExtractionResult:
     """
     Extract text and metadata from one file.  Runs in a worker thread.
 
@@ -232,6 +243,11 @@ def _extract_file(filepath: Path) -> _ExtractionResult:
     main thread can handle them without crashing the executor.
     """
     result = _ExtractionResult(filepath=filepath)
+
+    # --- cancellation check (before any I/O) ---
+    if cancel_event is not None and cancel_event.is_set():
+        result.cancelled = True
+        return result
 
     if not filepath.exists():
         result.pre_hash_error = "File not found"
@@ -250,6 +266,11 @@ def _extract_file(filepath: Path) -> _ExtractionResult:
         result.file_hash = _sha256(filepath)
     except Exception as exc:
         result.pre_hash_error = f"Cannot read file: {exc}"
+        return result
+
+    # --- cancellation check (after hash, before slow extraction) ---
+    if cancel_event is not None and cancel_event.is_set():
+        result.cancelled = True
         return result
 
     # Step 2 — extract pages
