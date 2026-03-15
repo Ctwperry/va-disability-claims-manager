@@ -2,6 +2,8 @@
 Qt background workers for long-running tasks (ingestion, search, export).
 Uses QRunnable + QThreadPool to keep the UI responsive.
 """
+import threading
+
 from PyQt6.QtCore import QRunnable, QObject, pyqtSignal, pyqtSlot, QThreadPool
 from app.db.connection import close_connection
 
@@ -23,6 +25,11 @@ class IngestionWorker(QRunnable):
         self.veteran_id = veteran_id
         self.signals = WorkerSignals()
         self.setAutoDelete(True)
+        self._cancel_event = threading.Event()
+
+    def cancel(self):
+        """Signal the worker to stop after the current file completes."""
+        self._cancel_event.set()
 
     @pyqtSlot()
     def run(self):
@@ -36,6 +43,7 @@ class IngestionWorker(QRunnable):
                 self.filepaths,
                 self.veteran_id,
                 progress_cb=progress_cb,
+                cancel_event=self._cancel_event,
             )
             self.signals.result.emit(results)
         except Exception as exc:

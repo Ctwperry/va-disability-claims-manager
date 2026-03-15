@@ -25,6 +25,7 @@ class DocumentPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._veteran_id: int | None = None
+        self._active_worker = None   # IngestionWorker | None — held for cancel()
         self._setAcceptDrops(True)
         self._build_ui()
 
@@ -88,6 +89,17 @@ class DocumentPanel(QWidget):
         self._progress_label.setVisible(False)
         self._progress_label.setStyleSheet("color: #555e6e; font-size: 12px;")
         layout.addWidget(self._progress_label)
+
+        self._btn_cancel = QPushButton("Cancel Import")
+        self._btn_cancel.setFixedWidth(120)
+        self._btn_cancel.setVisible(False)
+        self._btn_cancel.setStyleSheet(
+            "QPushButton { background: #c0392b; color: white; border-radius: 4px; "
+            "padding: 4px 10px; font-size: 12px; }"
+            "QPushButton:disabled { background: #aaa; }"
+        )
+        self._btn_cancel.clicked.connect(self._cancel_ingestion)
+        layout.addWidget(self._btn_cancel)
 
         # Document table
         self._table = QTableWidget()
@@ -169,8 +181,12 @@ class DocumentPanel(QWidget):
         self._progress_bar.setValue(0)
         self._progress_bar.setMaximum(len(paths))
         self._btn_add.setEnabled(False)
+        self._btn_cancel.setVisible(True)
+        self._btn_cancel.setEnabled(True)
+        self._btn_cancel.setText("Cancel Import")
 
         worker = IngestionWorker(paths, self._veteran_id)
+        self._active_worker = worker
         worker.signals.progress.connect(self._on_progress)
         worker.signals.result.connect(self._on_ingestion_done)
         worker.signals.error.connect(self._on_ingestion_error)
@@ -185,16 +201,21 @@ class DocumentPanel(QWidget):
         self._progress_bar.setVisible(False)
         self._progress_label.setVisible(False)
         self._btn_add.setEnabled(True)
+        self._btn_cancel.setVisible(False)
+        self._active_worker = None
 
-        success = sum(1 for r in results if r["status"] == "success")
+        success   = sum(1 for r in results if r["status"] == "success")
         duplicate = sum(1 for r in results if r["status"] == "duplicate")
-        errors = sum(1 for r in results if r["status"] == "error")
+        errors    = sum(1 for r in results if r["status"] == "error")
+        cancelled = sum(1 for r in results if r["status"] == "cancelled")
 
         msg_parts = []
         if success:
             msg_parts.append(f"{success} document(s) imported")
         if duplicate:
             msg_parts.append(f"{duplicate} duplicate(s) skipped")
+        if cancelled:
+            msg_parts.append(f"{cancelled} file(s) cancelled")
         if errors:
             msg_parts.append(f"{errors} error(s)")
             error_msgs = [f"  • {r['filename']}: {r['message']}"
@@ -233,10 +254,20 @@ class DocumentPanel(QWidget):
         self._progress_bar.setVisible(False)
         self._progress_label.setVisible(False)
         self._btn_add.setEnabled(True)
+        self._btn_cancel.setVisible(False)
+        self._active_worker = None
         # Show the tail of the traceback — that's where the actual exception type/message is
         display = error[-1200:] if len(error) > 1200 else error
         QMessageBox.critical(self, "Ingestion Error",
                              f"An unexpected error occurred:\n\n{display}")
+
+    def _cancel_ingestion(self):
+        """Called when the user presses Cancel — signals the worker to stop."""
+        self._btn_cancel.setEnabled(False)
+        self._btn_cancel.setText("Cancelling…")
+        self._progress_label.setText("Cancelling — finishing current file…")
+        if self._active_worker is not None:
+            self._active_worker.cancel()
 
     def _on_analyze(self):
         if not self._veteran_id:

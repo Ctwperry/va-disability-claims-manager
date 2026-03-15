@@ -1,7 +1,6 @@
 """
 Application-wide configuration: paths, constants, and settings.
 """
-import os
 import sys
 from pathlib import Path
 
@@ -43,9 +42,7 @@ WINDOW_TITLE = f"{APP_NAME} v{APP_VERSION}"
 TESSERACT_DEFAULT_PATHS = [
     r"C:\Program Files\Tesseract-OCR\tesseract.exe",
     r"C:\Program Files (x86)\Tesseract-OCR\tesseract.exe",
-    r"C:\Users\{}\AppData\Local\Programs\Tesseract-OCR\tesseract.exe".format(
-        os.getenv("USERNAME", "")
-    ),
+    str(Path.home() / "AppData" / "Local" / "Programs" / "Tesseract-OCR" / "tesseract.exe"),
 ]
 
 # ---------------------------------------------------------------------------
