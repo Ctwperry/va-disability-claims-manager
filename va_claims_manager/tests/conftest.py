@@ -64,11 +64,14 @@ for _mod, _stub in [
 
 # ---------------------------------------------------------------------------
 # Per-test isolated SQLite database — never touches the production DB.
+# Sets a fixed test encryption key so sqlcipher3 can open temp databases.
 # ---------------------------------------------------------------------------
 @pytest.fixture(autouse=True)
 def use_temp_db(tmp_path, monkeypatch):
     import app.db.connection as conn_mod
+    from app.db.encryption import set_test_key
 
+    set_test_key("test-key-not-for-production")
     monkeypatch.setattr(conn_mod, "DB_PATH", tmp_path / "test.db")
     conn_mod.close_connection()  # clear any leftover thread-local conn
     yield

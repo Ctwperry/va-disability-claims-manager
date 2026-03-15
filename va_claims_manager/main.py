@@ -14,6 +14,7 @@ from PyQt6.QtGui import QPixmap, QColor, QPainter, QFont
 from PyQt6.QtCore import Qt, QTimer
 
 from app.config import APP_NAME, APP_VERSION, DB_PATH
+from app.db.encryption import ensure_key, is_plaintext_db, migrate_plaintext_to_encrypted
 from app.db.schema import initialize_database
 from app.ui.app_window import MainWindow
 
@@ -65,8 +66,30 @@ def main():
     splash.show()
     app.processEvents()
 
-    # Initialize database
+    # Initialize encryption key + database
     try:
+        splash.showMessage(
+            "  Initializing encryption...",
+            Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft,
+            QColor("#a0bdd8"),
+        )
+        app.processEvents()
+
+        # Retrieve (or generate on first launch) the encryption key
+        key = ensure_key()
+        log.info("Encryption key ready")
+
+        # Migrate existing plaintext database if one exists
+        if DB_PATH.exists() and is_plaintext_db(DB_PATH):
+            splash.showMessage(
+                "  Encrypting existing database...",
+                Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft,
+                QColor("#a0bdd8"),
+            )
+            app.processEvents()
+            backup = migrate_plaintext_to_encrypted(DB_PATH, key)
+            log.info("Plaintext DB migrated; backup at %s", backup)
+
         splash.showMessage(
             "  Initializing database...",
             Qt.AlignmentFlag.AlignBottom | Qt.AlignmentFlag.AlignLeft,

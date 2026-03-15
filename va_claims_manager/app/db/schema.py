@@ -2,7 +2,7 @@
 Database schema creation and migration.
 Call initialize_database() once at application startup.
 """
-import sqlite3
+import sqlcipher3 as sqlite3
 import logging
 from app.db.connection import get_connection
 

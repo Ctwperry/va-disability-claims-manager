@@ -23,6 +23,13 @@ VASRD_CODES_PATH = DATA_DIR / "vasrd_codes.json"
 PACT_ACT_PATH = DATA_DIR / "pact_act_conditions.json"
 BENEFITS_DATA_PATH = DATA_DIR / "benefits_data.json"
 
+# ---------------------------------------------------------------------------
+# Database encryption (SQLCipher + OS keychain)
+# ---------------------------------------------------------------------------
+
+KEYCHAIN_SERVICE = "va-claims-manager"
+KEYCHAIN_ACCOUNT = "db-encryption-key"
+
 # Ensure data directories exist at import time
 for _dir in (DATA_DIR, EXPORTS_DIR, FORMS_DIR, FORM_TEMPLATES_DIR):
     _dir.mkdir(parents=True, exist_ok=True)

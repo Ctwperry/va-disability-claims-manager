@@ -6,7 +6,7 @@ Verifies that:
   - close_connection() nulls out the thread-local connection.
   - Workers call close_connection() in their finally blocks.
 """
-import sqlite3
+import sqlcipher3 as sqlite3
 import threading
 from unittest.mock import patch
 import pytest
