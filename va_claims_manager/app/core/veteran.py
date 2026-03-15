@@ -18,6 +18,10 @@ class Veteran:
     dd214_on_file: bool = False
     era: str = ""
     notes: str = ""
+    # Dependent counts — used for accurate compensation rate calculation
+    dependents_spouse: int = 0     # 0 or 1
+    dependents_children: int = 0   # number of qualifying children
+    dependents_parents: int = 0    # number of dependent parents (0, 1, or 2)
     created_at: str = ""
     updated_at: str = ""
 
@@ -39,6 +43,7 @@ class Veteran:
     @classmethod
     def from_row(cls, row) -> "Veteran":
         """Create a Veteran from a sqlite3.Row."""
+        keys = row.keys() if hasattr(row, "keys") else []
         return cls(
             id=row["id"],
             full_name=row["full_name"] or "",
@@ -51,6 +56,9 @@ class Veteran:
             dd214_on_file=bool(row["dd214_on_file"]),
             era=row["era"] or "",
             notes=row["notes"] or "",
+            dependents_spouse=int(row["dependents_spouse"]) if "dependents_spouse" in keys else 0,
+            dependents_children=int(row["dependents_children"]) if "dependents_children" in keys else 0,
+            dependents_parents=int(row["dependents_parents"]) if "dependents_parents" in keys else 0,
             created_at=row["created_at"] or "",
             updated_at=row["updated_at"] or "",
         )

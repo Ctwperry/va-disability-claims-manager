@@ -13,16 +13,46 @@ from PyQt6.QtGui import QColor, QFont
 from app.config import PACT_ACT_PATH
 from app.core.rating_calculator import combined_rating, rating_summary, check_tdiu_eligibility
 from app.analysis.presumptive_data import get_era_categories
+from app.services.benefits_service import get_benefits_by_category
 import app.db.repositories.veteran_repo as veteran_repo
 import app.db.repositories.claim_repo as claim_repo
 import app.db.repositories.document_repo as doc_repo
 
-# 2025 VA monthly compensation rates (single veteran, no dependents)
+# 2025 VA monthly compensation rates (no dependents)
 _VA_RATES_2025 = {
     0: 0, 10: 175.51, 20: 346.95, 30: 537.42, 40: 774.16,
     50: 1102.04, 60: 1395.93, 70: 1759.72, 80: 2044.89,
     90: 2297.96, 100: 3831.30,
 }
+
+# 2025 dependent add-on amounts (per month) by rating and family status.
+# Rates apply at 30%+. Keys: (rating, spouse, children, parents)
+# Rather than enumerate every combo, store the add-on components separately
+# and sum them. Source: 38 CFR Part 3 / VA compensation rate tables.
+_SPOUSE_ADDON = {
+    30: 59, 40: 79, 50: 100, 60: 119, 70: 140, 80: 159, 90: 179, 100: 199,
+}
+_CHILD_ADDON = {
+    30: 30, 40: 40, 50: 50, 60: 60, 70: 70, 80: 80, 90: 90, 100: 100,
+}
+_PARENT_ADDON = {
+    30: 35, 40: 47, 50: 58, 60: 70, 70: 81, 80: 92, 90: 104, 100: 115,
+}
+_AID_ATTENDANCE_SPOUSE_ADDON = {
+    30: 55, 40: 73, 50: 91, 60: 110, 70: 127, 80: 145, 90: 163, 100: 181,
+}
+
+
+def _monthly_compensation(rating: int, spouse: int, children: int, parents: int,
+                           aid_attendance: bool = False) -> float:
+    """Calculate estimated monthly VA compensation with dependents."""
+    base = _VA_RATES_2025.get(rating, 0)
+    if rating < 30:
+        return base  # Dependents add-on starts at 30%
+    spouse_add = (_AID_ATTENDANCE_SPOUSE_ADDON if aid_attendance else _SPOUSE_ADDON).get(rating, 0) * min(spouse, 1)
+    child_add = _CHILD_ADDON.get(rating, 0) * children
+    parent_add = _PARENT_ADDON.get(rating, 0) * min(parents, 2)
+    return base + spouse_add + child_add + parent_add
 
 
 class DashboardPanel(QWidget):
@@ -102,6 +132,19 @@ class DashboardPanel(QWidget):
         self._whatif_frame = self._build_whatif_widget()
         layout.addWidget(self._whatif_frame)
 
+        # Federal Benefits section (hidden until veteran loaded)
+        self._benefits_section_lbl = self._section_lbl("Federal Benefits at Your Rating")
+        self._benefits_section_lbl.setVisible(False)
+        layout.addWidget(self._benefits_section_lbl)
+
+        self._benefits_frame = QFrame()
+        self._benefits_frame.setObjectName("card")
+        self._benefits_inner = QVBoxLayout(self._benefits_frame)
+        self._benefits_inner.setContentsMargins(16, 12, 16, 14)
+        self._benefits_inner.setSpacing(4)
+        self._benefits_frame.setVisible(False)
+        layout.addWidget(self._benefits_frame)
+
         # Service Era Presumptive Recommendations (hidden until veteran loaded)
         self._era_rec_section_lbl = self._section_lbl(
             "Service Era Presumptive Conditions  (Suggested Claims)"
@@ -167,7 +210,11 @@ class DashboardPanel(QWidget):
         self._update_pact_banner(veteran)
 
         # TDIU eligibility check
-        self._update_tdiu_banner(ratings)
+        tdiu_result = check_tdiu_eligibility(ratings)
+        self._update_tdiu_banner_result(tdiu_result)
+
+        # Federal benefits section
+        self._rebuild_benefits_section(est_combined, tdiu_result["eligible"])
 
         # Service era presumptive recommendations
         self._update_era_recommendations(veteran)
@@ -195,8 +242,8 @@ class DashboardPanel(QWidget):
                 "Add an estimated % to each claim in the Claims tab to see the combined calculation."
             )
 
-        # Update what-if estimator base ratings
-        self._whatif_update_base(ratings)
+        # Update what-if estimator base ratings + family status
+        self._whatif_update_base(ratings, veteran)
 
     # ------------------------------------------------------------------
     # What-If Rating Estimator
@@ -212,7 +259,7 @@ class DashboardPanel(QWidget):
         # Description
         desc = QLabel(
             "See how adding a new claim changes your combined rating and monthly compensation. "
-            "Rates shown are 2025 VA rates for a single veteran with no dependents."
+            "Rates shown are 2025 VA rates. Adjust family status below for dependent add-ons (30%+)."
         )
         desc.setWordWrap(True)
         desc.setStyleSheet("color: #555e6e; font-size: 12px;")
@@ -318,6 +365,43 @@ class DashboardPanel(QWidget):
         )
         outer.addWidget(self._whatif_explanation)
 
+        # Family status row (affects compensation display)
+        sep2 = QFrame()
+        sep2.setFrameShape(QFrame.Shape.HLine)
+        sep2.setStyleSheet("color: #dde2e8;")
+        outer.addWidget(sep2)
+
+        family_row = QHBoxLayout()
+        family_row.setSpacing(16)
+        family_row.addWidget(QLabel("Family status:"))
+
+        family_row.addWidget(QLabel("Spouse:"))
+        self._whatif_spouse = QSpinBox()
+        self._whatif_spouse.setRange(0, 1)
+        self._whatif_spouse.setFixedWidth(55)
+        self._whatif_spouse.valueChanged.connect(self._whatif_recalculate)
+        family_row.addWidget(self._whatif_spouse)
+
+        family_row.addWidget(QLabel("Children:"))
+        self._whatif_children = QSpinBox()
+        self._whatif_children.setRange(0, 20)
+        self._whatif_children.setFixedWidth(55)
+        self._whatif_children.valueChanged.connect(self._whatif_recalculate)
+        family_row.addWidget(self._whatif_children)
+
+        family_row.addWidget(QLabel("Parents:"))
+        self._whatif_parents = QSpinBox()
+        self._whatif_parents.setRange(0, 2)
+        self._whatif_parents.setFixedWidth(55)
+        self._whatif_parents.valueChanged.connect(self._whatif_recalculate)
+        family_row.addWidget(self._whatif_parents)
+
+        family_note = QLabel("(pre-filled from veteran profile)")
+        family_note.setStyleSheet("color: #888; font-size: 11px;")
+        family_row.addWidget(family_note)
+        family_row.addStretch()
+        outer.addLayout(family_row)
+
         # Store state
         self._whatif_extra_ratings: list[int] = []
         self._whatif_base_ratings: list[int] = []
@@ -370,8 +454,11 @@ class DashboardPanel(QWidget):
             base or self._whatif_extra_ratings
         ) else 0
 
-        pay_before = _VA_RATES_2025.get(combined_before, 0)
-        pay_after = _VA_RATES_2025.get(combined_after, 0)
+        spouse = self._whatif_spouse.value()
+        children = self._whatif_children.value()
+        parents = self._whatif_parents.value()
+        pay_before = _monthly_compensation(combined_before, spouse, children, parents)
+        pay_after = _monthly_compensation(combined_after, spouse, children, parents)
         delta_rating = combined_after - combined_before
         delta_pay = pay_after - pay_before
 
@@ -411,8 +498,8 @@ class DashboardPanel(QWidget):
         else:
             self._whatif_explanation.setText("")
 
-    def _whatif_update_base(self, ratings: list[int]):
-        """Called on refresh to sync base ratings from actual claims."""
+    def _whatif_update_base(self, ratings: list[int], veteran=None):
+        """Called on refresh to sync base ratings and veteran dependents."""
         self._whatif_base_ratings = ratings
         if ratings:
             self._whatif_current_lbl.setText(
@@ -420,6 +507,17 @@ class DashboardPanel(QWidget):
             )
         else:
             self._whatif_current_lbl.setText("Current claim ratings: none set yet")
+        # Pre-fill family status from veteran profile
+        if veteran is not None:
+            self._whatif_spouse.blockSignals(True)
+            self._whatif_children.blockSignals(True)
+            self._whatif_parents.blockSignals(True)
+            self._whatif_spouse.setValue(veteran.dependents_spouse)
+            self._whatif_children.setValue(veteran.dependents_children)
+            self._whatif_parents.setValue(veteran.dependents_parents)
+            self._whatif_spouse.blockSignals(False)
+            self._whatif_children.blockSignals(False)
+            self._whatif_parents.blockSignals(False)
         self._whatif_recalculate()
 
     def _clear(self):
@@ -428,6 +526,8 @@ class DashboardPanel(QWidget):
             card.set_value("—")
         self._pact_banner.setVisible(False)
         self._tdiu_banner.setVisible(False)
+        self._benefits_section_lbl.setVisible(False)
+        self._benefits_frame.setVisible(False)
         self._era_rec_section_lbl.setVisible(False)
         self._era_rec_frame.setVisible(False)
         self._rating_detail.setText("Select a veteran to see the dashboard.")
@@ -567,9 +667,97 @@ class DashboardPanel(QWidget):
             self.add_claim_requested.emit(cond_dict)
         return handler
 
+    def _rebuild_benefits_section(self, rating: int, tdiu_eligible: bool):
+        """Rebuild the Federal Benefits section for the current combined rating."""
+        # Clear existing content
+        while self._benefits_inner.count():
+            item = self._benefits_inner.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        if rating == 0 and not tdiu_eligible:
+            self._benefits_section_lbl.setVisible(False)
+            self._benefits_frame.setVisible(False)
+            return
+
+        self._benefits_section_lbl.setVisible(True)
+        self._benefits_frame.setVisible(True)
+
+        effective = 100 if tdiu_eligible else rating
+        label_text = (
+            f"All benefits available at {effective}% (TDIU — paid at 100% rate)"
+            if tdiu_eligible else
+            f"All benefits available at {rating}%  (cumulative — includes every tier from 0%–{rating}%)"
+        )
+        intro = QLabel(label_text)
+        intro.setWordWrap(True)
+        intro.setStyleSheet("color: #555e6e; font-size: 12px; margin-bottom: 6px;")
+        self._benefits_inner.addWidget(intro)
+
+        grouped = get_benefits_by_category(rating, tdiu_eligible)
+        if not grouped:
+            self._benefits_inner.addWidget(QLabel("No benefits data available."))
+            return
+
+        CATEGORY_COLORS = {
+            "Healthcare":            "#0070c0",
+            "Employment":            "#1a7a4a",
+            "Financial":             "#b8610a",
+            "Education":             "#6b21a8",
+            "Housing":               "#0e7490",
+            "Insurance / Dependents":"#be123c",
+            "Military Access":       "#374151",
+        }
+
+        for cat_label, items in grouped.items():
+            color = CATEGORY_COLORS.get(cat_label, "#333")
+
+            cat_header = QLabel(f"  {cat_label}  ({len(items)})")
+            cat_header.setStyleSheet(
+                f"font-weight: bold; font-size: 12px; color: white; "
+                f"background-color: {color}; padding: 4px 8px; border-radius: 3px; "
+                f"margin-top: 8px;"
+            )
+            self._benefits_inner.addWidget(cat_header)
+
+            for benefit in items:
+                row_widget = QWidget()
+                row = QHBoxLayout(row_widget)
+                row.setContentsMargins(10, 2, 4, 2)
+                row.setSpacing(6)
+
+                # Threshold badge
+                badge = QLabel(f"{benefit['threshold']}%+")
+                badge.setFixedWidth(38)
+                badge.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                badge.setStyleSheet(
+                    f"font-size: 10px; font-weight: bold; color: {color}; "
+                    f"border: 1px solid {color}; border-radius: 3px; padding: 1px 3px;"
+                )
+                row.addWidget(badge)
+
+                # Name + detail
+                text_col = QVBoxLayout()
+                text_col.setSpacing(0)
+                name_lbl = QLabel(benefit["name"])
+                name_lbl.setWordWrap(True)
+                name_lbl.setStyleSheet("font-size: 12px; color: #1a2332;")
+                text_col.addWidget(name_lbl)
+                detail_lbl = QLabel(benefit["detail"])
+                detail_lbl.setWordWrap(True)
+                detail_lbl.setStyleSheet("font-size: 11px; color: #555e6e;")
+                text_col.addWidget(detail_lbl)
+                row.addLayout(text_col, 1)
+
+                self._benefits_inner.addWidget(row_widget)
+
     def _update_tdiu_banner(self, ratings: list[int]):
         """Show TDIU eligibility banner if individual ratings meet criteria."""
         result = check_tdiu_eligibility(ratings)
+        self._update_tdiu_banner_result(result)
+
+    def _update_tdiu_banner_result(self, result: dict):
+        """Apply a pre-computed TDIU result dict to the banner."""
         self._tdiu_banner.setVisible(result["eligible"])
         if result["eligible"]:
             msg_lbl = self._tdiu_banner.findChild(QLabel, "tdiu_msg")

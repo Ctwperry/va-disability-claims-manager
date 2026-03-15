@@ -22,6 +22,7 @@ FORMS_DIR = DATA_DIR / "forms"
 FORM_TEMPLATES_DIR = FORMS_DIR / "templates"
 VASRD_CODES_PATH = DATA_DIR / "vasrd_codes.json"
 PACT_ACT_PATH = DATA_DIR / "pact_act_conditions.json"
+BENEFITS_DATA_PATH = DATA_DIR / "benefits_data.json"
 
 # Ensure data directories exist at import time
 for _dir in (DATA_DIR, EXPORTS_DIR, FORMS_DIR, FORM_TEMPLATES_DIR):

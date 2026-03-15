@@ -1,0 +1,316 @@
+{
+  "_comment": "VA federal benefits by rating threshold. Benefits unlock at the listed threshold and remain available at all higher ratings. Cumulative display (0% through current rating) is handled in benefits_service.py.",
+  "thresholds": {
+    "0": {
+      "healthcare": [
+        {
+          "name": "VA Healthcare Enrollment (Priority Group 8 / Cost-share)",
+          "detail": "Veterans with 0% rating may enroll in VA healthcare subject to income-based co-pays and Priority Group assignment.",
+          "url": "https://www.va.gov/health-care/eligibility/"
+        }
+      ],
+      "employment": [],
+      "financial": [],
+      "education": [],
+      "housing": [],
+      "insurance": [
+        {
+          "name": "VALife Insurance (up to $40,000)",
+          "detail": "Open enrollment life insurance available to any veteran with a service-connected disability regardless of rating.",
+          "url": "https://www.va.gov/life-insurance/options-eligibility/valife/"
+        }
+      ],
+      "military": []
+    },
+    "10": {
+      "healthcare": [
+        {
+          "name": "VA Healthcare — Priority Group 3 (service-connected 10–20%)",
+          "detail": "Reduced or no copays for care related to your service-connected conditions.",
+          "url": "https://www.va.gov/health-care/eligibility/priority-groups/"
+        },
+        {
+          "name": "Prescription Medications — $5/30-day supply (SC conditions)",
+          "detail": "Co-pay of $5 per 30-day supply for medications related to service-connected conditions.",
+          "url": "https://www.va.gov/health-care/pay-copay-bill/"
+        }
+      ],
+      "employment": [
+        {
+          "name": "Federal Hiring Preference — 10-Point Preference",
+          "detail": "10-point veterans' preference on federal civil service exams and competitive job applications.",
+          "url": "https://www.opm.gov/policy-data-oversight/veterans-services/vet-guide-for-hr-professionals/"
+        }
+      ],
+      "financial": [
+        {
+          "name": "Travel Pay (Beneficiary Travel)",
+          "detail": "Mileage reimbursement or special transportation to VA facilities for service-connected care.",
+          "url": "https://www.va.gov/health-care/get-reimbursed-for-travel-pay/"
+        }
+      ],
+      "education": [],
+      "housing": [
+        {
+          "name": "VA Home Loan Guarantee (reduced funding fee)",
+          "detail": "VA-backed home loan with competitive rates and no down payment required. Funding fee is reduced at 10%+.",
+          "url": "https://www.va.gov/housing-assistance/home-loans/"
+        }
+      ],
+      "insurance": [],
+      "military": []
+    },
+    "20": {
+      "healthcare": [],
+      "employment": [],
+      "financial": [
+        {
+          "name": "Clothing Allowance (if SC condition affects clothing)",
+          "detail": "Annual clothing allowance if your service-connected skin condition or prosthetic device damages or requires special clothing.",
+          "url": "https://www.va.gov/disability/eligibility/special-claims/clothing-allowance/"
+        }
+      ],
+      "education": [],
+      "housing": [],
+      "insurance": [],
+      "military": []
+    },
+    "30": {
+      "healthcare": [
+        {
+          "name": "VA Healthcare — Priority Group 2 (service-connected 30–49%)",
+          "detail": "Priority Group 2 with minimal copays. Dental care may be available.",
+          "url": "https://www.va.gov/health-care/eligibility/priority-groups/"
+        },
+        {
+          "name": "Comprehensive Dental Care (if rated 100% or hospitalized 90+ days)",
+          "detail": "Full VA dental eligibility begins at 100% or specific hospitalization criteria; 30% opens dental referral pathway.",
+          "url": "https://www.va.gov/health-care/about-va-health-benefits/dental-care/"
+        }
+      ],
+      "employment": [
+        {
+          "name": "Vocational Rehabilitation & Employment (VR&E / Chapter 31)",
+          "detail": "Employment services, job training, education, and independent living services for veterans with at least 10% rating (most program depth at 20–30%+).",
+          "url": "https://www.va.gov/careers-employment/vocational-rehabilitation/"
+        },
+        {
+          "name": "Disabled Veteran Leave (federal employees — up to 104 hrs first year)",
+          "detail": "Federal employees who are veterans with a service-connected disability of 30%+ receive up to 104 hours of disabled veteran leave in their first year of employment.",
+          "url": "https://www.opm.gov/policy-data-oversight/pay-leave/leave-administration/fact-sheets/disabled-veteran-leave/"
+        }
+      ],
+      "financial": [
+        {
+          "name": "Concurrent Retirement and Disability Pay (CRDP)",
+          "detail": "Retired veterans with 50%+ rating receive CRDP. At 30–40%, CRDP phase-in applies for Chapter 61 retirees.",
+          "url": "https://www.dfas.mil/retiredmilitary/disability/crdp/"
+        },
+        {
+          "name": "Dependency and Indemnity Compensation (DIC) — survivor benefit",
+          "detail": "If veteran dies from a service-connected condition, surviving spouse/dependents may receive DIC payments. More likely established at 30%+.",
+          "url": "https://www.va.gov/disability/dependency-indemnity-compensation/"
+        },
+        {
+          "name": "Dependents' add-on compensation (spouse, children, parents)",
+          "detail": "Monthly compensation increases when veteran has qualifying dependents. Available at 30%+. Rates vary by rating tier and number of dependents.",
+          "url": "https://www.va.gov/disability/compensation-rates/veteran-rates/"
+        }
+      ],
+      "education": [
+        {
+          "name": "Dependents' Educational Assistance (DEA / Chapter 35)",
+          "detail": "Education and training benefits for eligible dependents and survivors. Eligibility enhanced at 100% P&T but survivors of 30%+ SC veteran may qualify.",
+          "url": "https://www.va.gov/education/survivor-dependent-education-assistance/"
+        }
+      ],
+      "housing": [],
+      "insurance": [
+        {
+          "name": "CHAMPVA (dependent healthcare) — at 100% P&T",
+          "detail": "Civilian Health and Medical Program of the VA for dependents. Eligibility triggers at 100% P&T, but listed here as awareness item for progressing veterans.",
+          "url": "https://www.va.gov/health-care/family-caregiver-benefits/champva/"
+        }
+      ],
+      "military": []
+    },
+    "50": {
+      "healthcare": [
+        {
+          "name": "VA Healthcare — Priority Group 1 (service-connected 50–100%)",
+          "detail": "Highest priority group. Comprehensive care with no copays for all VA healthcare services.",
+          "url": "https://www.va.gov/health-care/eligibility/priority-groups/"
+        },
+        {
+          "name": "Medications — No copay (SC and non-SC conditions)",
+          "detail": "At 50%+, all VA prescriptions are provided at no cost.",
+          "url": "https://www.va.gov/health-care/pay-copay-bill/"
+        },
+        {
+          "name": "Community Care Network (CCN) — expanded access",
+          "detail": "Greater access to community (non-VA) providers when VA cannot provide timely or local care.",
+          "url": "https://www.va.gov/communitycare/"
+        }
+      ],
+      "employment": [
+        {
+          "name": "Concurrent Retirement and Disability Pay (CRDP) — full eligibility",
+          "detail": "At 50%+, military retirees receive both retirement pay and VA disability compensation concurrently (no offset).",
+          "url": "https://www.dfas.mil/retiredmilitary/disability/crdp/"
+        }
+      ],
+      "financial": [],
+      "education": [],
+      "housing": [
+        {
+          "name": "VA Funding Fee Exemption (home loans)",
+          "detail": "Veterans receiving VA compensation at any rating are exempt from the VA home loan funding fee.",
+          "url": "https://www.va.gov/housing-assistance/home-loans/funding-fee-and-closing-costs/"
+        }
+      ],
+      "insurance": [],
+      "military": [
+        {
+          "name": "Commissary and Exchange (BX/PX) Privileges",
+          "detail": "Service-connected veterans rated 0%+ may shop at military commissaries and exchanges on base.",
+          "url": "https://www.militaryonesource.mil/benefits/morale-welfare-and-recreation/shopping-and-dining/commissary-and-exchange-privileges-for-veterans/"
+        },
+        {
+          "name": "MWR (Morale, Welfare & Recreation) Access",
+          "detail": "Access to base recreational facilities, gyms, pools, and MWR programs.",
+          "url": "https://www.militaryonesource.mil/"
+        }
+      ]
+    },
+    "70": {
+      "healthcare": [],
+      "employment": [],
+      "financial": [
+        {
+          "name": "Total Disability / Individual Unemployability (TDIU)",
+          "detail": "If combined rating is 70%+ with one disability at 40%+, veteran may be eligible for TDIU — paid at 100% rate while rated less than 100%. File VA Form 21-8940.",
+          "url": "https://www.va.gov/disability/eligibility/tdiu/"
+        }
+      ],
+      "education": [],
+      "housing": [],
+      "insurance": [],
+      "military": []
+    },
+    "100": {
+      "healthcare": [
+        {
+          "name": "Full VA Dental Care",
+          "detail": "Comprehensive dental care at VA facilities at no cost for veterans rated 100% (schedular or TDIU).",
+          "url": "https://www.va.gov/health-care/about-va-health-benefits/dental-care/"
+        },
+        {
+          "name": "Caregiver Support Program",
+          "detail": "Enhanced eligibility for the Program of Comprehensive Assistance for Family Caregivers (PCAFC) at 100%.",
+          "url": "https://www.caregiver.va.gov/"
+        }
+      ],
+      "employment": [
+        {
+          "name": "Non-Competitive Federal Employment (Schedule A hiring)",
+          "detail": "100% disabled veterans may be appointed non-competitively to federal positions under Schedule A authority.",
+          "url": "https://www.opm.gov/policy-data-oversight/disability-employment/hiring/"
+        }
+      ],
+      "financial": [
+        {
+          "name": "Total and Permanent (P&T) Designation",
+          "detail": "100% P&T veterans are protected from rating reduction and gain enhanced benefits eligibility including CHAMPVA and DEA.",
+          "url": "https://www.va.gov/disability/about-disability-ratings/permanent-total-disability-ratings/"
+        },
+        {
+          "name": "Property Tax Exemptions (state-specific)",
+          "detail": "Most states offer full or partial property tax exemptions for 100% disabled veterans. Check your state's veterans affairs office.",
+          "url": "https://www.va.gov/resources/state-and-local-property-tax-exemptions-for-veterans/"
+        },
+        {
+          "name": "Vehicle / License Plate Benefits (state-specific)",
+          "detail": "Many states offer free or discounted specialty disabled veteran license plates and vehicle registration at 100%.",
+          "url": "https://www.va.gov/resources/state-veterans-benefits-directory/"
+        },
+        {
+          "name": "Total and Permanent Disability (TPD) Student Loan Discharge",
+          "detail": "100% P&T veterans may qualify for discharge of federal student loans through the TPD discharge program.",
+          "url": "https://studentaid.gov/manage-loans/forgiveness-cancellation/disability-discharge"
+        }
+      ],
+      "education": [
+        {
+          "name": "Fry Scholarship (survivors of veterans who died in service/SC)",
+          "detail": "Children and surviving spouses of veterans who died in the line of duty may receive up to 36 months of GI Bill-level education benefits.",
+          "url": "https://www.va.gov/education/survivor-dependent-education-assistance/fry-scholarship/"
+        },
+        {
+          "name": "Dependents' Educational Assistance (DEA / Chapter 35) — full eligibility",
+          "detail": "Dependents of 100% P&T veterans receive full Chapter 35 education and training benefits.",
+          "url": "https://www.va.gov/education/survivor-dependent-education-assistance/"
+        },
+        {
+          "name": "Free Tuition — Many State Programs",
+          "detail": "Most states offer free in-state tuition at public colleges/universities for 100% disabled veterans and/or their dependents.",
+          "url": "https://www.va.gov/resources/state-veterans-benefits-directory/"
+        }
+      ],
+      "housing": [
+        {
+          "name": "Specially Adapted Housing (SAH) Grant — up to $109,986",
+          "detail": "Grant to build, buy, or modify a home to meet the needs of certain veterans with service-connected disabilities.",
+          "url": "https://www.va.gov/housing-assistance/disability-housing-grants/"
+        },
+        {
+          "name": "Special Home Adaptation (SHA) Grant — up to $22,036",
+          "detail": "Smaller adaptation grant for veterans with specific qualifying service-connected disabilities.",
+          "url": "https://www.va.gov/housing-assistance/disability-housing-grants/"
+        },
+        {
+          "name": "Temporary Residence Adaptation (TRA) Grant",
+          "detail": "Allows SAH/SHA eligible veterans to apply grant funds to a temporary residence while their permanent home is being modified.",
+          "url": "https://www.va.gov/housing-assistance/disability-housing-grants/"
+        },
+        {
+          "name": "Home Improvements and Structural Alterations (HISA) Grant",
+          "detail": "Up to $6,800 (SC) or $2,000 (non-SC) for medically necessary home improvements. Available below 100% but fully accessible at 100%.",
+          "url": "https://www.va.gov/housing-assistance/disability-housing-grants/home-improvements-and-structural-alterations-hisa-grant/"
+        }
+      ],
+      "insurance": [
+        {
+          "name": "CHAMPVA — Dependent Healthcare Coverage",
+          "detail": "Comprehensive healthcare coverage for eligible dependents of 100% P&T veterans through the VA's CHAMPVA program.",
+          "url": "https://www.va.gov/health-care/family-caregiver-benefits/champva/"
+        },
+        {
+          "name": "Service-Disabled Veterans Life Insurance (S-DVI) waiver",
+          "detail": "100% totally disabled veterans may receive a waiver of premiums on S-DVI policies.",
+          "url": "https://www.va.gov/life-insurance/options-eligibility/s-dvi/"
+        }
+      ],
+      "military": [
+        {
+          "name": "Space-A (Space-Available) Military Travel",
+          "detail": "100% disabled veterans and their dependents may fly on military aircraft on a space-available basis at no cost.",
+          "url": "https://www.amc.af.mil/Home/AMC-Travel-Site/"
+        },
+        {
+          "name": "National Parks — America the Beautiful Access Pass (free)",
+          "detail": "Free lifetime Access Pass for veterans with permanent disabilities providing free entry to all federal lands and recreation sites.",
+          "url": "https://www.nps.gov/planyourvisit/passes.htm"
+        }
+      ]
+    }
+  },
+  "category_labels": {
+    "healthcare": "Healthcare",
+    "employment": "Employment",
+    "financial": "Financial",
+    "education": "Education",
+    "housing": "Housing",
+    "insurance": "Insurance / Dependents",
+    "military": "Military Access"
+  }
+}

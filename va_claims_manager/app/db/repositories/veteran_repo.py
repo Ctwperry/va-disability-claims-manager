@@ -14,13 +14,15 @@ def create(v: Veteran) -> int:
             """
             INSERT INTO veterans
                 (full_name, ssn_last4, dob, branch, entry_date, separation_date,
-                 discharge_type, dd214_on_file, era, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 discharge_type, dd214_on_file, era, notes,
+                 dependents_spouse, dependents_children, dependents_parents)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 v.full_name, v.ssn_last4, v.dob, v.branch,
                 v.entry_date, v.separation_date, v.discharge_type,
                 int(v.dd214_on_file), v.era, v.notes,
+                v.dependents_spouse, v.dependents_children, v.dependents_parents,
             ),
         )
     return cur.lastrowid
@@ -33,23 +35,28 @@ def update(v: Veteran):
         conn.execute(
             """
             UPDATE veterans SET
-                full_name       = ?,
-                ssn_last4       = ?,
-                dob             = ?,
-                branch          = ?,
-                entry_date      = ?,
-                separation_date = ?,
-                discharge_type  = ?,
-                dd214_on_file   = ?,
-                era             = ?,
-                notes           = ?,
-                updated_at      = datetime('now')
+                full_name           = ?,
+                ssn_last4           = ?,
+                dob                 = ?,
+                branch              = ?,
+                entry_date          = ?,
+                separation_date     = ?,
+                discharge_type      = ?,
+                dd214_on_file       = ?,
+                era                 = ?,
+                notes               = ?,
+                dependents_spouse   = ?,
+                dependents_children = ?,
+                dependents_parents  = ?,
+                updated_at          = datetime('now')
             WHERE id = ?
             """,
             (
                 v.full_name, v.ssn_last4, v.dob, v.branch,
                 v.entry_date, v.separation_date, v.discharge_type,
-                int(v.dd214_on_file), v.era, v.notes, v.id,
+                int(v.dd214_on_file), v.era, v.notes,
+                v.dependents_spouse, v.dependents_children, v.dependents_parents,
+                v.id,
             ),
         )
 

@@ -8,7 +8,7 @@ from app.db.connection import get_connection
 
 log = logging.getLogger(__name__)
 
-CURRENT_VERSION = 4
+CURRENT_VERSION = 5
 
 # ---------------------------------------------------------------------------
 # DDL Statements
@@ -303,6 +303,15 @@ def _run_migrations(conn: "sqlite3.Connection", from_version: int):
         with conn:
             conn.execute("UPDATE app_settings SET value='4' WHERE key='db_version'")
         log.info("Migrated to DB version 4")
+
+    if from_version < 5:
+        # v5: dependent counts on veterans for accurate compensation rate display
+        _alter_safe(conn, "ALTER TABLE veterans ADD COLUMN dependents_spouse INTEGER DEFAULT 0")
+        _alter_safe(conn, "ALTER TABLE veterans ADD COLUMN dependents_children INTEGER DEFAULT 0")
+        _alter_safe(conn, "ALTER TABLE veterans ADD COLUMN dependents_parents INTEGER DEFAULT 0")
+        with conn:
+            conn.execute("UPDATE app_settings SET value='5' WHERE key='db_version'")
+        log.info("Migrated to DB version 5")
 
 
 def _alter_safe(conn, sql: str):

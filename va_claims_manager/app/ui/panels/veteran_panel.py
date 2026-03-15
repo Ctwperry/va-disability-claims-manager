@@ -5,7 +5,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QFormLayout,
     QLabel, QLineEdit, QComboBox, QCheckBox, QTextEdit,
     QPushButton, QFrame, QScrollArea, QMessageBox,
-    QSizePolicy, QSpacerItem
+    QSizePolicy, QSpacerItem, QSpinBox
 )
 from PyQt6.QtCore import Qt, pyqtSignal
 from PyQt6.QtGui import QFont
@@ -141,6 +141,42 @@ class VeteranPanel(QWidget):
 
         form_layout.addWidget(card2)
 
+        # ---- Card: Dependents ----
+        form_layout.addWidget(self._make_card_header("Dependents"))
+        card_dep = self._make_card()
+        fl_dep = QFormLayout(card_dep)
+        fl_dep.setSpacing(10)
+        fl_dep.setContentsMargins(16, 16, 16, 16)
+        fl_dep.setLabelAlignment(Qt.AlignmentFlag.AlignRight)
+
+        dep_note = QLabel(
+            "Dependent counts affect monthly compensation rates at 30%+. "
+            "Enter 0 if no qualifying dependents."
+        )
+        dep_note.setWordWrap(True)
+        dep_note.setStyleSheet("color: #555e6e; font-size: 11px;")
+        fl_dep.addRow("", dep_note)
+
+        self._dep_spouse = QSpinBox()
+        self._dep_spouse.setRange(0, 1)
+        self._dep_spouse.setFixedWidth(70)
+        self._dep_spouse.setToolTip("Enter 1 if you have a qualifying spouse, 0 otherwise.")
+        fl_dep.addRow(self._lbl("Spouse (0 or 1)"), self._dep_spouse)
+
+        self._dep_children = QSpinBox()
+        self._dep_children.setRange(0, 20)
+        self._dep_children.setFixedWidth(70)
+        self._dep_children.setToolTip("Number of qualifying dependent children (under 18, or in school under 23).")
+        fl_dep.addRow(self._lbl("Dependent Children"), self._dep_children)
+
+        self._dep_parents = QSpinBox()
+        self._dep_parents.setRange(0, 2)
+        self._dep_parents.setFixedWidth(70)
+        self._dep_parents.setToolTip("Number of dependent parents (0, 1, or 2).")
+        fl_dep.addRow(self._lbl("Dependent Parents"), self._dep_parents)
+
+        form_layout.addWidget(card_dep)
+
         # ---- Card: Additional Notes ----
         form_layout.addWidget(self._make_card_header("Notes"))
         card3 = self._make_card()
@@ -200,6 +236,9 @@ class VeteranPanel(QWidget):
         self._sep_date.setText(v.separation_date)
         self._set_combo(self._discharge, v.discharge_type)
         self._dd214.setChecked(v.dd214_on_file)
+        self._dep_spouse.setValue(v.dependents_spouse)
+        self._dep_children.setValue(v.dependents_children)
+        self._dep_parents.setValue(v.dependents_parents)
         self._notes.setPlainText(v.notes)
         self._btn_delete.setVisible(True)
 
@@ -224,6 +263,9 @@ class VeteranPanel(QWidget):
             separation_date=self._sep_date.text().strip(),
             discharge_type=self._discharge.currentData() or "Honorable",
             dd214_on_file=self._dd214.isChecked(),
+            dependents_spouse=self._dep_spouse.value(),
+            dependents_children=self._dep_children.value(),
+            dependents_parents=self._dep_parents.value(),
             notes=self._notes.toPlainText().strip(),
         )
 
@@ -275,6 +317,9 @@ class VeteranPanel(QWidget):
         self._era.setCurrentIndex(0)
         self._discharge.setCurrentIndex(0)
         self._dd214.setChecked(False)
+        self._dep_spouse.setValue(0)
+        self._dep_children.setValue(0)
+        self._dep_parents.setValue(0)
         self._notes.clear()
 
     @staticmethod
