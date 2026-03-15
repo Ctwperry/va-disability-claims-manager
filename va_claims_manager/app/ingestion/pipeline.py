@@ -233,9 +233,13 @@ def _extract_file(filepath: Path) -> _ExtractionResult:
     """
     result = _ExtractionResult(filepath=filepath)
 
-    if not filepath.exists():
-        result.pre_hash_error = "File not found"
+    # --- path validation and normalization ---
+    resolved, path_err = _validate_path(filepath)
+    if resolved is None:
+        result.pre_hash_error = path_err
         return result
+    result.filepath = resolved   # store canonical path; all downstream I/O uses this
+    filepath = resolved
 
     ext = filepath.suffix.lower()
     file_type = SUPPORTED_EXTENSIONS.get(ext)
@@ -278,6 +282,33 @@ def _extract_file(filepath: Path) -> _ExtractionResult:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _validate_path(filepath: Path) -> tuple[Path | None, str]:
+    """
+    Validate and normalize a file path before ingestion.
+
+    Checks (in order):
+      1. Reject symlinks — they could point to sensitive system files.
+      2. Resolve to canonical form — eliminates .. traversal sequences.
+      3. Confirm it is a regular file — rejects dirs, devices, pipes.
+
+    Args:
+        filepath: Raw path as supplied by the user (drag-and-drop or picker).
+
+    Returns:
+        (resolved_path, "")      on success — resolved_path is canonical.
+        (None, error_message)    on any validation failure.
+    """
+    if filepath.is_symlink():
+        return None, "Symlinked files are not supported"
+    try:
+        resolved = filepath.resolve()
+    except (OSError, ValueError) as exc:
+        return None, f"Cannot resolve path: {exc}"
+    if not resolved.is_file():
+        return None, "File not found or is not a regular file"
+    return resolved, ""
+
 
 def _extract(filepath: Path, file_type: str) -> tuple[list[dict], bool]:
     """
