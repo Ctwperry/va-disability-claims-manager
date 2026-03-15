@@ -249,9 +249,17 @@ def _extract_file(filepath: Path, cancel_event=None) -> _ExtractionResult:
         result.cancelled = True
         return result
 
-    if not filepath.exists():
-        result.pre_hash_error = "File not found"
+    # --- path validation and normalization ---
+    from app.core.path_guard import safe_file_path
+    resolved = safe_file_path(filepath)
+    if resolved is None:
+        if filepath.is_symlink():
+            result.pre_hash_error = "Symlinked files are not supported"
+        else:
+            result.pre_hash_error = "File not found or is not a regular file"
         return result
+    result.filepath = resolved   # store canonical path; all downstream I/O uses this
+    filepath = resolved
 
     ext = filepath.suffix.lower()
     file_type = SUPPORTED_EXTENSIONS.get(ext)
