@@ -28,6 +28,12 @@ class _QRunnable:
         pass
 
 
+class _QWidget(_QObject):
+    """Minimal QWidget stub — enough for subclass instantiation via __new__."""
+    def __init__(self, parent=None):
+        pass
+
+
 def _noop_decorator(*args, **kwargs):
     """Identity decorator — returns the decorated callable unchanged."""
     def decorator(fn):
@@ -38,6 +44,9 @@ def _noop_decorator(*args, **kwargs):
 _qt_core_mock = MagicMock()
 _qt_core_mock.QObject = _QObject
 _qt_core_mock.QRunnable = _QRunnable
+
+_qt_widgets_mock = MagicMock()
+_qt_widgets_mock.QWidget = _QWidget
 _qt_core_mock.pyqtSlot = _noop_decorator
 # pyqtSignal must return a MagicMock (not a plain function) so that
 # class-level signal attributes have an .emit() method callable in tests.
@@ -46,7 +55,7 @@ _qt_core_mock.pyqtSignal = lambda *a, **kw: MagicMock()
 for _mod, _stub in [
     ("PyQt6", MagicMock()),
     ("PyQt6.QtCore", _qt_core_mock),
-    ("PyQt6.QtWidgets", MagicMock()),
+    ("PyQt6.QtWidgets", _qt_widgets_mock),
     ("PyQt6.QtGui", MagicMock()),
 ]:
     if _mod not in sys.modules:
