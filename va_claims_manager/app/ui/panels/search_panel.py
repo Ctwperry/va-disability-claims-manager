@@ -122,9 +122,8 @@ class SearchPanel(QWidget):
         self._page_viewer = QTextBrowser()
         self._page_viewer.setOpenLinks(False)
         self._page_viewer.setStyleSheet(
-            "QTextBrowser { background-color: #ffffff; border: 1px solid #dde2e8; "
-            "border-radius: 6px; padding: 12px; font-family: 'Segoe UI', sans-serif; "
-            "font-size: 13px; line-height: 1.6; }"
+            "QTextBrowser { border-radius: 6px; padding: 12px; "
+            "font-family: 'Segoe UI', sans-serif; font-size: 13px; line-height: 1.6; }"
         )
         viewer_layout.addWidget(self._page_viewer)
 

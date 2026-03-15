@@ -103,9 +103,8 @@ class ExportPanel(QWidget):
         self._preview = QTextEdit()
         self._preview.setReadOnly(True)
         self._preview.setStyleSheet(
-            "QTextEdit { background: #ffffff; border: 1px solid #dde2e8; "
-            "border-radius: 6px; font-family: Consolas, monospace; "
-            "font-size: 12px; padding: 10px; color: #1a1a2e; }"
+            "QTextEdit { border-radius: 6px; font-family: Consolas, monospace; "
+            "font-size: 12px; padding: 10px; }"
         )
         self._preview.setMinimumHeight(240)
         layout.addWidget(self._preview)

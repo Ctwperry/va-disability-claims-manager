@@ -509,7 +509,7 @@ class CPPrepDialog(QDialog):
 
         # Footer buttons
         footer = QFrame()
-        footer.setStyleSheet("border-top: 1px solid #dde2e8; background: #f8f9fb;")
+        footer.setObjectName("dialog_footer")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(16, 10, 16, 10)
 
@@ -590,9 +590,7 @@ class CPPrepDialog(QDialog):
     def _caluza_summary(self) -> QFrame:
         c = self._claim
         frame = QFrame()
-        frame.setStyleSheet(
-            "QFrame { background: #f8f9fb; border-radius: 8px; border: 1px solid #ccc; }"
-        )
+        frame.setObjectName("card")
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(16, 12, 16, 12)
         layout.setSpacing(4)

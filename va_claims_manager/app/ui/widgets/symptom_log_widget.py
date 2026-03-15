@@ -60,10 +60,9 @@ class SymptomLogWidget(QWidget):
         self._table.setAlternatingRowColors(True)
         self._table.setFixedHeight(160)
         self._table.setStyleSheet(
-            "QTableWidget { font-size: 12px; gridline-color: #ebebeb; }"
-            "QHeaderView::section { background: #f5f7fa; font-size: 11px; "
-            "font-weight: bold; color: #555e6e; padding: 3px 5px; "
-            "border-bottom: 2px solid #dde2e8; }"
+            "QTableWidget { font-size: 12px; }"
+            "QHeaderView::section { font-size: 11px; font-weight: bold; "
+            "padding: 3px 5px; }"
         )
         self._table.verticalHeader().setVisible(False)
         layout.addWidget(self._table)

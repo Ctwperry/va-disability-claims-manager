@@ -88,10 +88,6 @@ class EvidencePanel(QWidget):
 
             card = QFrame()
             card.setObjectName("card")
-            card.setStyleSheet(
-                "QFrame#card { border: 1px solid #d0d7de; border-radius: 6px; "
-                "background: #f8f9fa; margin-bottom: 2px; }"
-            )
             card_layout = QVBoxLayout(card)
             card_layout.setContentsMargins(10, 8, 10, 8)
             card_layout.setSpacing(4)
@@ -207,8 +203,8 @@ class EvidencePanel(QWidget):
                         snip_lbl = QLabel(snippet_text)
                         snip_lbl.setWordWrap(True)
                         snip_lbl.setStyleSheet(
-                            "font-size: 12px; color: #333; padding: 4px 6px; "
-                            "background: #fff; border-radius: 4px; "
+                            "font-size: 12px; padding: 4px 6px; "
+                            "border-radius: 4px; "
                             "border: 1px solid #e0e0e0; margin-top: 2px;"
                         )
                         card_layout.addWidget(snip_lbl)

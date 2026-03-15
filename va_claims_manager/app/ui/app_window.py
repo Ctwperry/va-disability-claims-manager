@@ -9,8 +9,9 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt, QSize
 from PyQt6.QtGui import QFont, QIcon
 
+from PyQt6.QtWidgets import QApplication
 from app.config import APP_NAME, APP_VERSION
-from app.ui.styles import MAIN_STYLE
+from app.ui.styles import get_style
 import app.db.repositories.veteran_repo as veteran_repo
 from app.db.schema import get_setting, set_setting
 
@@ -29,7 +30,9 @@ class MainWindow(QMainWindow):
         super().__init__()
         self.setWindowTitle(f"{APP_NAME} v{APP_VERSION}")
         self.setMinimumSize(1100, 700)
-        self.setStyleSheet(MAIN_STYLE)
+        # Apply saved theme (dark/light) — reads DB before UI is built
+        _saved_theme = get_setting("theme", "light")
+        QApplication.instance().setStyleSheet(get_style(dark=(_saved_theme == "dark")))
 
         self._active_veteran_id: int | None = None
         self._nav_buttons: list[QPushButton] = []
@@ -312,13 +315,9 @@ class MainWindow(QMainWindow):
     # ------------------------------------------------------------------
 
     def _open_settings(self):
-        QMessageBox.information(
-            self, "Settings",
-            "Settings panel coming in Phase 6.\n\n"
-            "To configure Tesseract OCR path, edit:\n"
-            "  data/va_claims.db  →  app_settings table\n"
-            "  key: 'tesseract_path'"
-        )
+        from app.ui.dialogs.settings_dialog import SettingsDialog
+        dlg = SettingsDialog(self)
+        dlg.exec()
 
     def _open_about(self):
         QMessageBox.about(

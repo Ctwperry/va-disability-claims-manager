@@ -157,6 +157,27 @@ BODY_SYSTEMS = [
 ]
 
 # ---------------------------------------------------------------------------
+# Document type quality weights for evidence scoring
+# Higher = more authoritative source.  Used by condition_scanner.py to
+# compute weighted confidence scores instead of raw match counts.
+# ---------------------------------------------------------------------------
+
+DOC_TYPE_WEIGHTS: dict[str, float] = {
+    "DBQ":                  1.0,  # Disability Benefits Questionnaire = C&P exam
+    "NexusLetter":          1.0,  # Specialist nexus opinion
+    "STR":                  0.9,  # Service Treatment Records
+    "SeparationAssessment": 0.9,  # Thorough medical evaluation at separation
+    "PrivateMedical":       0.85, # Private specialist / clinic records
+    "VAMedical":            0.80, # VA medical records (primary care, clinic)
+    "DD214":                0.70, # Separation document — mentions conditions
+    "VADecision":           0.70, # Rating decision — objective but administrative
+    "VocationalReport":     0.60, # Vocational expert report
+    "SupportStatement":     0.40, # Veteran self-report (21-4138)
+    "BuddyStatement":       0.40, # Lay / witness statement (21-10210)
+    "Other":                0.50, # Unknown / uncategorized
+}
+
+# ---------------------------------------------------------------------------
 # OCR minimum character threshold per page
 # (If pdfplumber returns fewer chars, fall back to OCR)
 # ---------------------------------------------------------------------------

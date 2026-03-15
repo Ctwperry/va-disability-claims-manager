@@ -92,12 +92,10 @@ class Statement4138Dialog(QDialog):
         # Claim & Veteran (auto-filled, read-only display)
         self._fi_veteran = QLineEdit()
         self._fi_veteran.setReadOnly(True)
-        self._fi_veteran.setStyleSheet("background: #f5f5f5; color: #555;")
         qf_layout.addRow("Veteran:", self._fi_veteran)
 
         self._fi_condition = QLineEdit()
         self._fi_condition.setReadOnly(True)
-        self._fi_condition.setStyleSheet("background: #f5f5f5; color: #555;")
         qf_layout.addRow("Condition:", self._fi_condition)
 
         self._fi_primary = QLineEdit()
@@ -198,7 +196,7 @@ class Statement4138Dialog(QDialog):
 
         # ---- Bottom button bar ----
         btn_bar = QFrame()
-        btn_bar.setStyleSheet("background: #f8f9fb; border-top: 1px solid #dde2e8;")
+        btn_bar.setObjectName("dialog_footer")
         btn_row = QHBoxLayout(btn_bar)
         btn_row.setContentsMargins(16, 10, 16, 10)
         btn_row.setSpacing(10)

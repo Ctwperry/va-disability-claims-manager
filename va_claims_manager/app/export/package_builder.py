@@ -64,8 +64,13 @@ def build_package(
 
     # ---- 00_Cover_Sheet ----
     prog("Creating cover sheet...")
-    cover_path = package_dir / "00_Cover_Sheet.txt"
-    _write_cover_sheet(cover_path, veteran, claims, all_docs)
+    cover_path = package_dir / "00_Cover_Sheet.pdf"
+    try:
+        from app.export.pdf_writer import write_cover_sheet_pdf
+        write_cover_sheet_pdf(cover_path, veteran, claims, all_docs)
+    except Exception as exc:
+        log.warning("PDF cover sheet failed (%s) — writing plain-text fallback", exc)
+        _write_cover_sheet(package_dir / "00_Cover_Sheet.txt", veteran, claims, all_docs)
 
     # ---- 01_DD214 ----
     prog("Copying DD-214...")
@@ -98,8 +103,13 @@ def build_package(
         claim_dir = claims_root / f"{safe_condition}{code_suffix}"
         claim_dir.mkdir(exist_ok=True)
 
-        # Claim summary text file
-        _write_claim_summary(claim_dir / "Claim_Summary.txt", claim, veteran)
+        # Claim summary — PDF with text fallback
+        try:
+            from app.export.pdf_writer import write_claim_summary_pdf
+            write_claim_summary_pdf(claim_dir / "Claim_Summary.pdf", claim, veteran)
+        except Exception as exc:
+            log.warning("PDF claim summary failed (%s) — writing plain-text fallback", exc)
+            _write_claim_summary(claim_dir / "Claim_Summary.txt", claim, veteran)
 
         # Copy linked documents by role
         import app.db.connection as db_conn
@@ -121,7 +131,12 @@ def build_package(
     prog("Generating form reference sheet...")
     forms_dir = package_dir / "04_Forms"
     forms_dir.mkdir(exist_ok=True)
-    _write_forms_checklist(forms_dir / "Required_Forms_Checklist.txt", veteran, claims)
+    try:
+        from app.export.pdf_writer import write_forms_checklist_pdf
+        write_forms_checklist_pdf(forms_dir / "Required_Forms_Checklist.pdf", veteran, claims)
+    except Exception as exc:
+        log.warning("PDF forms checklist failed (%s) — writing plain-text fallback", exc)
+        _write_forms_checklist(forms_dir / "Required_Forms_Checklist.txt", veteran, claims)
 
     # ---- 05_BuddyStatements ----
     prog("Copying buddy statements...")

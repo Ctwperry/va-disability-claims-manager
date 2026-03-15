@@ -363,10 +363,7 @@ class _DropZone(QFrame):
         super().__init__(parent)
         self.setAcceptDrops(True)
         self.setFixedHeight(80)
-        self.setObjectName("card")
-        self.setStyleSheet(
-            "QFrame#card { border: 2px dashed #0070c0; background-color: #f0f6ff; border-radius: 8px; }"
-        )
+        self.setObjectName("drop_zone")
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
         lbl = QLabel("Drag & drop PDF, Word, or image files here  —  or click '+ Add Files'")
@@ -377,21 +374,17 @@ class _DropZone(QFrame):
     def dragEnterEvent(self, event: QDragEnterEvent):
         if event.mimeData().hasUrls():
             self.setStyleSheet(
-                "QFrame { border: 2px solid #0070c0; background-color: #e3f0ff; border-radius: 8px; }"
+                "QFrame#drop_zone { border: 2px solid #0070c0; border-radius: 8px; }"
             )
             event.acceptProposedAction()
         else:
             event.ignore()
 
     def dragLeaveEvent(self, event):
-        self.setStyleSheet(
-            "QFrame#card { border: 2px dashed #0070c0; background-color: #f0f6ff; border-radius: 8px; }"
-        )
+        self.setStyleSheet("")
 
     def dropEvent(self, event: QDropEvent):
-        self.setStyleSheet(
-            "QFrame#card { border: 2px dashed #0070c0; background-color: #f0f6ff; border-radius: 8px; }"
-        )
+        self.setStyleSheet("")
         urls = event.mimeData().urls()
         paths = [u.toLocalFile() for u in urls if u.toLocalFile()]
         if paths:

@@ -2,7 +2,16 @@
 Medical Record Analysis — Scan Results Dialog.
 
 Displays potential disability conditions found in a veteran's indexed documents,
-lets the veteran review evidence, and creates draft claims with one click.
+lets the veteran review evidence with context-analysis indicators, and creates
+draft claims with one click.
+
+Confidence levels (from context-aware weighted scoring):
+  High      ≥ 0.70 — Strong positive evidence across quality sources
+  Medium    ≥ 0.40 — Moderate positive evidence
+  Low       ≥ 0.10 — Weak positive evidence
+  Very Low  ≥ −0.10 — Mostly bare mentions, uncertain language
+  Negative  < −0.10 — Evidence is dominated by negations/family history
+                       (shown in "Excluded" filter tab, unchecked by default)
 """
 from __future__ import annotations
 
@@ -29,7 +38,7 @@ log = logging.getLogger(__name__)
 class _ScanSignals(QObject):
     progress = pyqtSignal(int, int, str)
     finished = pyqtSignal(list, int, int)   # (claims, doc_count, page_count)
-    error = pyqtSignal(str)
+    error    = pyqtSignal(str)
 
 
 class _ScanWorker(QRunnable):
@@ -69,10 +78,6 @@ class _ConditionCard(QFrame):
 
     def _build_ui(self):
         self.setObjectName("card")
-        self.setStyleSheet(
-            "QFrame#card { background: #ffffff; border: 1px solid #dde2e8; "
-            "border-radius: 8px; margin-bottom: 6px; }"
-        )
         outer = QVBoxLayout(self)
         outer.setContentsMargins(14, 10, 14, 10)
         outer.setSpacing(6)
@@ -81,13 +86,17 @@ class _ConditionCard(QFrame):
         hdr = QHBoxLayout()
         hdr.setSpacing(8)
 
+        is_negative = self._claim.confidence == "Negative"
+
         self._checkbox = QCheckBox()
-        # Auto-check High confidence; leave Medium/Low for the user
+        # Auto-check High and Medium; leave Low/VeryLow/Negative unchecked
         default_checked = (
-            self._claim.confidence == "High" and not self._claim.already_claimed
+            self._claim.confidence in ("High", "Medium")
+            and not self._claim.already_claimed
+            and not is_negative
         )
         self._checkbox.setChecked(default_checked)
-        self._checkbox.setEnabled(not self._claim.already_claimed)
+        self._checkbox.setEnabled(not self._claim.already_claimed and not is_negative)
         hdr.addWidget(self._checkbox)
 
         # Condition name
@@ -126,8 +135,10 @@ class _ConditionCard(QFrame):
 
         hdr.addStretch()
 
-        # Confidence badge
-        conf_lbl = QLabel(f" {self._claim.confidence} ")
+        # Confidence badge — shows level + numeric score
+        score = self._claim.confidence_score
+        score_str = f"{score:+.2f}" if score != 0.0 else "0.00"
+        conf_lbl = QLabel(f" {self._claim.confidence} ({score_str}) ")
         conf_lbl.setStyleSheet(
             f"background: {self._claim.confidence_bg}; "
             f"color: {self._claim.confidence_color}; "
@@ -136,9 +147,7 @@ class _ConditionCard(QFrame):
         hdr.addWidget(conf_lbl)
 
         # Evidence count
-        ev_count_lbl = QLabel(
-            f"{self._claim.evidence_count} reference(s)"
-        )
+        ev_count_lbl = QLabel(f"{self._claim.evidence_count} ref(s)")
         ev_count_lbl.setStyleSheet("color: #555e6e; font-size: 11px;")
         hdr.addWidget(ev_count_lbl)
 
@@ -163,6 +172,24 @@ class _ConditionCard(QFrame):
             ev_widget = self._make_evidence_item(ev)
             ev_layout.addWidget(ev_widget)
 
+        # Summary line: positive / negation / uncertain counts
+        pos   = sum(1 for e in self._claim.evidence if e.positive_diagnosis)
+        neg   = sum(1 for e in self._claim.evidence if e.negation_detected or e.family_history)
+        uncrt = sum(1 for e in self._claim.evidence if e.uncertainty_flag)
+        parts = []
+        if pos:
+            parts.append(f"✓ {pos} positive")
+        if neg:
+            parts.append(f"⚠ {neg} negative")
+        if uncrt:
+            parts.append(f"~ {uncrt} uncertain")
+        if parts:
+            summary_lbl = QLabel("  " + "  ·  ".join(parts) + f"  (avg score: {score_str})")
+            summary_lbl.setStyleSheet(
+                "font-size: 11px; color: #666; font-style: italic; padding: 2px 4px;"
+            )
+            ev_layout.addWidget(summary_lbl)
+
         outer.addWidget(self._evidence_frame)
 
     def _make_evidence_item(self, ev) -> QWidget:
@@ -171,26 +198,58 @@ class _ConditionCard(QFrame):
         layout.setContentsMargins(0, 2, 0, 2)
         layout.setSpacing(2)
 
-        # Source line
+        # Source line + pattern indicator
         from app.config import DOC_TYPES
         doc_type_label = DOC_TYPES.get(ev.doc_type, ev.doc_type)
+
+        # Pattern indicator badge color
+        if ev.negation_detected or ev.family_history:
+            ind_bg, ind_fg = "#fdf0ef", "#c0392b"
+        elif ev.positive_diagnosis:
+            ind_bg, ind_fg = "#e8f8f0", "#1a7a4a"
+        elif ev.uncertainty_flag:
+            ind_bg, ind_fg = "#fff8e1", "#b8610a"
+        else:
+            ind_bg, ind_fg = "#f0f2f5", "#555e6e"
+
         src_lbl = QLabel(
             f"<b>{ev.doc_name}</b>  ·  Page {ev.page_number}  "
             f"<span style='color:#555e6e; font-size:11px;'>[{doc_type_label}]</span>"
+            f"  <span style='background:{ind_bg}; color:{ind_fg}; "
+            f"border-radius:3px; padding:1px 5px; font-size:11px;'>"
+            f"{ev.pattern_icon} {ev.pattern_label}</span>"
         )
         src_lbl.setTextFormat(Qt.TextFormat.RichText)
         src_lbl.setStyleSheet("font-size: 12px; color: #1a1a2e;")
         layout.addWidget(src_lbl)
 
-        # Snippet text
+        # Snippet text — muted for negations, highlighted for positives
+        if ev.negation_detected or ev.family_history:
+            border_color = "#e74c3c"
+            snippet_style = (
+                "font-size: 11px; opacity: 0.7; "
+                f"border-left: 3px solid {border_color}; "
+                "padding: 4px 8px; border-radius: 2px;"
+            )
+        elif ev.positive_diagnosis:
+            border_color = "#27ae60"
+            snippet_style = (
+                "font-size: 11px; "
+                f"border-left: 3px solid {border_color}; "
+                "padding: 4px 8px; border-radius: 2px;"
+            )
+        else:
+            border_color = "#0070c0"
+            snippet_style = (
+                "font-size: 11px; "
+                f"border-left: 3px solid {border_color}; "
+                "padding: 4px 8px; border-radius: 2px;"
+            )
+
         snippet_lbl = QLabel(f"<i>...{ev.snippet}...</i>")
         snippet_lbl.setTextFormat(Qt.TextFormat.RichText)
         snippet_lbl.setWordWrap(True)
-        snippet_lbl.setStyleSheet(
-            "color: #555e6e; font-size: 11px; "
-            "background: #f8f9fb; border-left: 3px solid #0070c0; "
-            "padding: 4px 8px; border-radius: 2px;"
-        )
+        snippet_lbl.setStyleSheet(snippet_style)
         layout.addWidget(snippet_lbl)
 
         return w
@@ -215,7 +274,7 @@ class _ConditionCard(QFrame):
 
 class ScanResultsDialog(QDialog):
     """
-    Shows analysis results and lets the user create draft claims.
+    Shows context-aware analysis results and lets the user create draft claims.
 
     Emits `claims_created` when draft claims have been created so the
     parent can refresh the claims panel.
@@ -229,7 +288,7 @@ class ScanResultsDialog(QDialog):
         self._all_claims: list = []
         self._active_filter = "all"
         self.setWindowTitle("Medical Record Analysis")
-        self.setMinimumSize(860, 680)
+        self.setMinimumSize(900, 700)
         self.setModal(True)
         self._build_ui()
         self._start_scan()
@@ -267,14 +326,17 @@ class ScanResultsDialog(QDialog):
         filter_layout.setContentsMargins(0, 0, 0, 0)
         filter_layout.setSpacing(6)
 
-        self._btn_all = self._filter_btn("All", "all")
-        self._btn_high = self._filter_btn("High Confidence", "High", "#e8f8f0", "#1a7a4a")
-        self._btn_med = self._filter_btn("Medium", "Medium", "#fff3e0", "#b8610a")
-        self._btn_low = self._filter_btn("Low", "Low", "#f0f2f5", "#555e6e")
+        self._btn_all      = self._filter_btn("All",           "all")
+        self._btn_high     = self._filter_btn("High",          "High",     "#e8f8f0", "#1a7a4a")
+        self._btn_med      = self._filter_btn("Medium",        "Medium",   "#fff3e0", "#b8610a")
+        self._btn_low      = self._filter_btn("Low",           "Low",      "#f0f2f5", "#555e6e")
+        self._btn_vlow     = self._filter_btn("Very Low",      "Very Low", "#f5f5fc", "#7a7a99")
+        self._btn_excluded = self._filter_btn("Excluded",      "Negative", "#fdf0ef", "#c0392b")
         self._btn_unclaimed = self._filter_btn("Not Yet Claimed", "unclaimed")
 
         for b in [self._btn_all, self._btn_high, self._btn_med,
-                  self._btn_low, self._btn_unclaimed]:
+                  self._btn_low, self._btn_vlow, self._btn_excluded,
+                  self._btn_unclaimed]:
             filter_layout.addWidget(b)
 
         filter_layout.addStretch()
@@ -297,9 +359,9 @@ class ScanResultsDialog(QDialog):
         disc_icon.setStyleSheet("font-size:16px; color:#b8610a;")
         disc_layout.addWidget(disc_icon)
         disc_text = QLabel(
-            "These are potential conditions found in your documents — not confirmed diagnoses. "
-            "Review each item, verify the evidence, then create draft claims for the ones you wish to file. "
-            "You will still need to complete the Caluza Triangle for each claim before submission."
+            "Conditions scored using context-aware analysis: ✓ Positive Diagnosis, "
+            "⚠ Negation/Family History (excluded), ~ Uncertain.  "
+            "Review each item and verify evidence before creating draft claims."
         )
         disc_text.setWordWrap(True)
         disc_text.setStyleSheet("color:#5d4037; font-size:12px; background:transparent;")
@@ -383,26 +445,34 @@ class ScanResultsDialog(QDialog):
             self._subtitle.setText(
                 f"Scanned {doc_count} document(s) ({page_count:,} pages). "
                 "No potential conditions were identified. "
-                "This may mean the records don't contain diagnostic text, or OCR may need to be improved."
+                "This may mean the records don't contain diagnostic text, "
+                "or OCR may need to be improved."
             )
             return
 
-        # Update filter button labels with counts
-        high = sum(1 for c in results if c.confidence == "High")
-        med = sum(1 for c in results if c.confidence == "Medium")
-        low = sum(1 for c in results if c.confidence == "Low")
-        unclaimed = sum(1 for c in results if not c.already_claimed)
+        # Counts per level
+        high     = sum(1 for c in results if c.confidence == "High")
+        med      = sum(1 for c in results if c.confidence == "Medium")
+        low      = sum(1 for c in results if c.confidence == "Low")
+        vlow     = sum(1 for c in results if c.confidence == "Very Low")
+        negative = sum(1 for c in results if c.confidence == "Negative")
+        unclaimed = sum(1 for c in results if not c.already_claimed
+                        and c.confidence != "Negative")
+        visible  = len(results) - negative
 
-        self._btn_all.setText(f"All ({len(results)})")
+        self._btn_all.setText(f"All ({visible})")
         self._btn_high.setText(f"High ({high})")
         self._btn_med.setText(f"Medium ({med})")
         self._btn_low.setText(f"Low ({low})")
+        self._btn_vlow.setText(f"Very Low ({vlow})")
+        self._btn_excluded.setText(f"Excluded ({negative})")
         self._btn_unclaimed.setText(f"Not Yet Claimed ({unclaimed})")
 
         self._subtitle.setText(
             f"Scanned {doc_count} document(s)  ·  {page_count:,} pages  ·  "
-            f"Found {len(results)} potential condition(s)  —  "
-            f"Select the ones you want to file and click 'Create Draft Claims'."
+            f"{visible} potential condition(s) identified"
+            + (f"  ·  {negative} excluded (negation-only)" if negative else "")
+            + "  —  Select conditions and click 'Create Draft Claims'."
         )
 
         self._filter_bar.setVisible(True)
@@ -424,55 +494,56 @@ class ScanResultsDialog(QDialog):
 
     def _apply_filter(self, key: str):
         self._active_filter = key
-        # Update button states
+
         for btn, bkey in [
-            (self._btn_all, "all"),
-            (self._btn_high, "High"),
-            (self._btn_med, "Medium"),
-            (self._btn_low, "Low"),
+            (self._btn_all,      "all"),
+            (self._btn_high,     "High"),
+            (self._btn_med,      "Medium"),
+            (self._btn_low,      "Low"),
+            (self._btn_vlow,     "Very Low"),
+            (self._btn_excluded, "Negative"),
             (self._btn_unclaimed, "unclaimed"),
         ]:
             btn.setChecked(bkey == key)
 
-        # Filter claims
         if key == "all":
-            visible = self._all_claims
+            # "All" excludes Negative-scored claims (shown in Excluded tab)
+            visible = [c for c in self._all_claims if c.confidence != "Negative"]
         elif key == "unclaimed":
-            visible = [c for c in self._all_claims if not c.already_claimed]
+            visible = [c for c in self._all_claims
+                       if not c.already_claimed and c.confidence != "Negative"]
+        elif key == "Negative":
+            visible = [c for c in self._all_claims if c.confidence == "Negative"]
         else:
             visible = [c for c in self._all_claims if c.confidence == key]
 
         self._rebuild_cards(visible)
 
     def _rebuild_cards(self, claims: list):
-        # Remove existing cards
         for card in self._cards:
             self._scroll_layout.removeWidget(card)
             card.deleteLater()
         self._cards.clear()
 
-        # Remove the stretch at the end
         item = self._scroll_layout.takeAt(self._scroll_layout.count() - 1)
         if item:
             del item
 
         for claim in claims:
             card = _ConditionCard(claim)
-            card.is_checked()  # ensure checkbox signal is connected
             self._cards.append(card)
             self._scroll_layout.addWidget(card)
 
         self._scroll_layout.addStretch()
         self._update_create_button()
 
-        # Re-connect all checkboxes to count update
         for card in self._cards:
             card._checkbox.stateChanged.connect(self._update_create_button)
 
     def _on_select_all(self, state: int):
         checked = state == Qt.CheckState.Checked.value
         for card in self._cards:
-            if not card._claim.already_claimed:
+            if not card._claim.already_claimed and card._claim.confidence != "Negative":
                 card._checkbox.blockSignals(True)
                 card._checkbox.setChecked(checked)
                 card._checkbox.blockSignals(False)
@@ -507,19 +578,23 @@ class ScanResultsDialog(QDialog):
         created = 0
         skipped = 0
         for potential in selected:
-            # Don't create if already claimed (belt-and-suspenders)
-            if potential.already_claimed:
+            if potential.already_claimed or potential.confidence == "Negative":
                 skipped += 1
                 continue
 
-            # Build human-readable evidence summary for the notes field
+            # Build evidence summary for the claim notes field
             evidence_lines = ["--- Auto-detected evidence references ---"]
             for i, ev in enumerate(potential.evidence, 1):
+                indicator = f"[{ev.pattern_icon} {ev.pattern_label}]"
                 evidence_lines.append(
-                    f"{i}. {ev.doc_name}  (Page {ev.page_number})\n"
+                    f"{i}. {ev.doc_name}  (Page {ev.page_number})  {indicator}\n"
                     f"   Keyword matched: '{ev.matched_keyword}'\n"
                     f"   Excerpt: ...{ev.snippet[:200]}..."
                 )
+            score_str = f"{potential.confidence_score:+.2f}"
+            evidence_lines.append(
+                f"\n--- Confidence: {potential.confidence} (score {score_str}) ---"
+            )
             notes = "\n".join(evidence_lines)
 
             claim = Claim(
@@ -536,15 +611,17 @@ class ScanResultsDialog(QDialog):
             try:
                 new_claim_id = claim_repo.create(claim)
 
-                # ---- Link each evidence document to this claim ----
-                # Group evidence by document_id so each doc gets one claim_documents row
+                # Link each evidence document to this claim
                 doc_pages: dict[int, list] = defaultdict(list)
                 for ev in potential.evidence:
                     doc_pages[ev.document_id].append({
-                        "page_number": ev.page_number,
-                        "page_id": ev.page_id,
-                        "keyword": ev.matched_keyword,
-                        "snippet": ev.snippet[:400],
+                        "page_number":  ev.page_number,
+                        "page_id":      ev.page_id,
+                        "keyword":      ev.matched_keyword,
+                        "snippet":      ev.snippet[:400],
+                        "pattern_label": ev.pattern_label,
+                        "positive":     ev.positive_diagnosis,
+                        "negated":      ev.negation_detected or ev.family_history,
                     })
 
                 conn = db_conn.get_connection()
@@ -552,8 +629,10 @@ class ScanResultsDialog(QDialog):
                     for doc_id, pages in doc_pages.items():
                         notes_json = json.dumps({
                             "auto_detected": True,
-                            "condition": potential.condition_name,
-                            "pages": pages,
+                            "condition":     potential.condition_name,
+                            "confidence":    potential.confidence,
+                            "score":         round(potential.confidence_score, 3),
+                            "pages":         pages,
                         })
                         conn.execute(
                             """INSERT OR REPLACE INTO claim_documents

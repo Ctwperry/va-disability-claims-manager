@@ -53,8 +53,8 @@ class ClaimPanel(QWidget):
 
         # ---- LEFT: Claims list ----
         left = QWidget()
+        left.setObjectName("claim_list_sidebar")
         left.setFixedWidth(260)
-        left.setStyleSheet("background-color: #f8f9fb; border-right: 1px solid #dde2e8;")
         lv = QVBoxLayout(left)
         lv.setContentsMargins(12, 20, 12, 12)
         lv.setSpacing(8)

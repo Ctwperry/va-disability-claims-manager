@@ -85,13 +85,17 @@ class DashboardPanel(QWidget):
 
         # Combined rating detail
         layout.addWidget(self._section_lbl("Combined Rating Calculation  (VA Whole-Person Method)"))
+        rating_frame = QFrame()
+        rating_frame.setObjectName("card")
+        rating_fl = QVBoxLayout(rating_frame)
+        rating_fl.setContentsMargins(14, 12, 14, 12)
         self._rating_detail = QLabel("")
         self._rating_detail.setWordWrap(True)
         self._rating_detail.setStyleSheet(
-            "background:#ffffff; border:1px solid #dde2e8; border-radius:6px; "
-            "padding:14px; font-family:Consolas,monospace; font-size:12px; color:#1a1a2e;"
+            "font-family:Consolas,monospace; font-size:12px;"
         )
-        layout.addWidget(self._rating_detail)
+        rating_fl.addWidget(self._rating_detail)
+        layout.addWidget(rating_frame)
 
         # What-If Rating Estimator
         layout.addWidget(self._section_lbl("Rating Impact Estimator  (What-If Calculator)"))
@@ -585,10 +589,7 @@ class DashboardPanel(QWidget):
     @staticmethod
     def _make_tdiu_banner() -> QFrame:
         frame = QFrame()
-        frame.setObjectName("card")
-        frame.setStyleSheet(
-            "QFrame#card { background-color: #e8f5e9; border: 1px solid #4caf50; border-radius: 8px; }"
-        )
+        frame.setObjectName("banner_success")
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(14, 10, 14, 10)
 
@@ -622,10 +623,7 @@ class DashboardPanel(QWidget):
     @staticmethod
     def _make_pact_banner() -> QFrame:
         frame = QFrame()
-        frame.setObjectName("card")
-        frame.setStyleSheet(
-            "QFrame#card { background-color: #fff8e1; border: 1px solid #ffc107; border-radius: 8px; }"
-        )
+        frame.setObjectName("banner_warning")
         layout = QHBoxLayout(frame)
         layout.setContentsMargins(14, 10, 14, 10)
 
@@ -653,7 +651,7 @@ class DashboardPanel(QWidget):
         widths = [None, 60, 120, 80, 80, 60, 70, 60]  # None = stretch
 
         if is_header:
-            row.setStyleSheet("background-color: #f5f7fa; border-bottom: 2px solid #dde2e8;")
+            row.setObjectName("table_header_row")
 
         for i, (text, width) in enumerate(zip(cols, widths)):
             lbl = QLabel(text)

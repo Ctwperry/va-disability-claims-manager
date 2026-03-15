@@ -3,7 +3,20 @@ Medical record condition scanner.
 
 Searches a veteran's indexed documents for mentions of claimable VA disability
 conditions.  Returns a ranked list of PotentialClaim objects with supporting
-evidence snippets so the veteran can review and decide what to file.
+evidence so the veteran can review and decide what to file.
+
+Confidence is computed from a weighted score rather than raw match counts:
+  - Each piece of evidence carries a source_weight (doc type quality, 0.4–1.0)
+  - Context-aware pattern detection adjusts the score:
+      Positive diagnosis  → weight × 1.5
+      Negation / family   → −0.5  (strong negative indicator)
+      Uncertainty flag    → weight × 0.5
+  - Average score across evidence determines confidence level:
+      ≥ 0.70  High
+      ≥ 0.40  Medium
+      ≥ 0.10  Low
+      ≥ −0.10  Very Low
+      < −0.10  Negative  (excluded from recommendations)
 """
 from __future__ import annotations
 
@@ -16,6 +29,7 @@ from typing import Callable
 
 log = logging.getLogger(__name__)
 
+
 # ---------------------------------------------------------------------------
 # Data models
 # ---------------------------------------------------------------------------
@@ -27,8 +41,30 @@ class ConditionEvidence:
     doc_name: str
     doc_type: str
     document_id: int
-    snippet: str          # cleaned snippet text (no markup)
-    matched_keyword: str  # which keyword triggered the match
+    snippet: str           # cleaned snippet text (no FTS5 markup)
+    matched_keyword: str   # which keyword triggered the match
+    # Context-analysis fields
+    context_window: str = ""        # ±200 chars around match for linguistic analysis
+    source_weight: float = 0.6      # doc-type quality weight (from DOC_TYPE_WEIGHTS)
+    negation_detected: bool = False # "denies", "ruled out", "no evidence of", etc.
+    positive_diagnosis: bool = False # "diagnosed with", "assessment:", "on treatment for"
+    uncertainty_flag: bool = False  # "possible", "questionable", "suspected"
+    family_history: bool = False    # "family history of", "father had", etc.
+    resolved: bool = False          # "resolved", "healed", "in remission"
+    pattern_label: str = ""         # "Positive Diagnosis", "Negation", "Family History", …
+    pattern_icon: str = ""          # "✓", "⚠", "~", "·"
+
+    @property
+    def evidence_score(self) -> float:
+        """Per-evidence contribution to the weighted confidence score."""
+        base = self.source_weight
+        if self.negation_detected or self.family_history:
+            return -0.5
+        if self.positive_diagnosis:
+            base *= 1.5
+        if self.uncertainty_flag:
+            base *= 0.5
+        return base
 
 
 @dataclass
@@ -44,21 +80,47 @@ class PotentialClaim:
         return len(self.evidence)
 
     @property
+    def confidence_score(self) -> float:
+        """
+        Weighted average evidence score.
+        Positive = strong evidence; negative = negation-dominant.
+        """
+        if not self.evidence:
+            return 0.0
+        return sum(ev.evidence_score for ev in self.evidence) / len(self.evidence)
+
+    @property
     def confidence(self) -> str:
-        n = self.evidence_count
-        if n >= 5:
+        s = self.confidence_score
+        if s >= 0.70:
             return "High"
-        elif n >= 2:
+        elif s >= 0.40:
             return "Medium"
-        return "Low"
+        elif s >= 0.10:
+            return "Low"
+        elif s >= -0.10:
+            return "Very Low"
+        return "Negative"
 
     @property
     def confidence_color(self) -> str:
-        return {"High": "#1a7a4a", "Medium": "#b8610a", "Low": "#555e6e"}[self.confidence]
+        return {
+            "High":     "#1a7a4a",
+            "Medium":   "#b8610a",
+            "Low":      "#555e6e",
+            "Very Low": "#7a7a99",
+            "Negative": "#c0392b",
+        }[self.confidence]
 
     @property
     def confidence_bg(self) -> str:
-        return {"High": "#e8f8f0", "Medium": "#fff3e0", "Low": "#f0f2f5"}[self.confidence]
+        return {
+            "High":     "#e8f8f0",
+            "Medium":   "#fff3e0",
+            "Low":      "#f0f2f5",
+            "Very Low": "#f5f5fc",
+            "Negative": "#fdf0ef",
+        }[self.confidence]
 
 
 # ---------------------------------------------------------------------------
@@ -293,7 +355,7 @@ def scan_veteran_records(
 
     Returns:
         (potential_claims, total_docs, total_pages)
-        potential_claims is sorted High → Medium → Low confidence, then by evidence count.
+        potential_claims sorted High → Medium → Low → Very Low → Negative, then by score.
     """
     import app.db.connection as db_conn
     from app.config import VASRD_CODES_PATH
@@ -319,7 +381,7 @@ def scan_veteran_records(
     if total_pages == 0:
         return [], total_docs, total_pages
 
-    # Load all VASRD codes so we can also scan codes not in the keyword dict
+    # Load VASRD codes for name/system lookup
     vasrd_codes: list[dict] = []
     try:
         with open(VASRD_CODES_PATH) as f:
@@ -329,7 +391,7 @@ def scan_veteran_records(
 
     code_to_meta = {c["code"]: c for c in vasrd_codes}
 
-    # Build list of (code, condition_name, body_system, keywords)
+    # Build scan targets: (code, name, system, keywords)
     scan_targets: list[tuple[str, str, str, list[str]]] = []
     seen_codes: set[str] = set()
 
@@ -342,13 +404,11 @@ def scan_veteran_records(
         system = meta.get("system", "General")
         scan_targets.append((code, name, system, kws))
 
-    # For any VASRD code NOT in keyword dict, use the condition name as the keyword
     for meta in vasrd_codes:
         code = meta["code"]
         if code not in seen_codes:
             seen_codes.add(code)
-            kws = [meta["name"]]  # use full name as fallback phrase
-            scan_targets.append((code, meta["name"], meta.get("system", "General"), kws))
+            scan_targets.append((code, meta["name"], meta.get("system", "General"), [meta["name"]]))
 
     total = len(scan_targets)
     results: list[PotentialClaim] = []
@@ -374,9 +434,9 @@ def scan_veteran_records(
         )
         results.append(claim)
 
-    # Sort: High first, then by evidence count descending
-    order = {"High": 0, "Medium": 1, "Low": 2}
-    results.sort(key=lambda c: (order[c.confidence], -c.evidence_count))
+    # Sort: High → Medium → Low → Very Low → Negative, then by score descending
+    _order = {"High": 0, "Medium": 1, "Low": 2, "Very Low": 3, "Negative": 4}
+    results.sort(key=lambda c: (_order.get(c.confidence, 3), -c.confidence_score))
 
     return results, total_docs, total_pages
 
@@ -385,17 +445,26 @@ def _query_condition(
     conn,
     veteran_id: int,
     keywords: list[str],
-    max_results: int = 6,
+    max_results: int = 10,
 ) -> list[ConditionEvidence]:
-    """Run an FTS5 search for a condition's keywords and return evidence."""
+    """
+    Run an FTS5 search for a condition's keywords and return evidence with context analysis.
+
+    Fetches the full page raw_text so context_analyzer can evaluate the sentence
+    surrounding each keyword match rather than only the FTS5 snippet.
+    """
+    from app.analysis.context_analyzer import analyze_context
+    from app.config import DOC_TYPE_WEIGHTS
+
     fts_query = _build_fts_query(keywords)
     if not fts_query:
         return []
 
     SQL = """
-        SELECT dp.id AS page_id,
+        SELECT dp.id          AS page_id,
                dp.page_number,
                dp.document_id,
+               dp.raw_text,
                d.filename,
                d.doc_type,
                snippet(document_search, 0, '>>>',  '<<<', ' ... ', 28) AS raw_snippet
@@ -414,37 +483,68 @@ def _query_condition(
         log.debug("FTS5 query failed for %r: %s", fts_query, exc)
         return []
 
-    evidence = []
+    evidence: list[ConditionEvidence] = []
     seen_pages: set[int] = set()
+
     for row in rows:
         if row["page_id"] in seen_pages:
             continue
         seen_pages.add(row["page_id"])
-        # Find which keyword matched (heuristic: check raw snippet)
-        matched_kw = _find_matched_keyword(keywords, row["raw_snippet"])
-        snippet = _clean_snippet(row["raw_snippet"])
+
+        matched_kw   = _find_matched_keyword(keywords, row["raw_snippet"])
+        snippet      = _clean_snippet(row["raw_snippet"])
+        raw_text     = row["raw_text"] or ""
+        context_win  = _extract_context_window(raw_text, matched_kw)
+        analysis     = analyze_context(context_win)
+        src_weight   = DOC_TYPE_WEIGHTS.get(row["doc_type"], 0.5)
+
         evidence.append(ConditionEvidence(
-            page_id=row["page_id"],
-            page_number=row["page_number"],
-            doc_name=row["filename"],
-            doc_type=row["doc_type"],
-            document_id=row["document_id"],
-            snippet=snippet,
-            matched_keyword=matched_kw,
+            page_id          = row["page_id"],
+            page_number      = row["page_number"],
+            doc_name         = row["filename"],
+            doc_type         = row["doc_type"],
+            document_id      = row["document_id"],
+            snippet          = snippet,
+            matched_keyword  = matched_kw,
+            context_window   = context_win,
+            source_weight    = src_weight,
+            negation_detected = analysis.negation_detected,
+            positive_diagnosis = analysis.positive_diagnosis,
+            uncertainty_flag = analysis.uncertainty_flag,
+            family_history   = analysis.family_history,
+            resolved         = analysis.resolved,
+            pattern_label    = analysis.pattern_label,
+            pattern_icon     = analysis.pattern_icon,
         ))
+
     return evidence
+
+
+def _extract_context_window(raw_text: str, keyword: str, window: int = 200) -> str:
+    """
+    Find keyword in raw_text and return ±window characters around it.
+
+    Falls back to the first 400 characters if keyword is not found
+    (can happen when FTS5 matches a stemmed form not present literally).
+    """
+    if not raw_text:
+        return ""
+    kw_norm = keyword.lower().replace("-", " ")
+    idx = raw_text.lower().find(kw_norm)
+    if idx == -1:
+        return raw_text[:400].strip()
+    start = max(0, idx - window)
+    end   = min(len(raw_text), idx + len(kw_norm) + window)
+    return raw_text[start:end].strip()
 
 
 def _build_fts_query(keywords: list[str]) -> str:
     """Convert keyword list to FTS5 OR query with phrase quoting."""
     parts = []
     for kw in keywords:
-        # Strip hyphens (FTS5 tokenizer splits on them anyway)
         normalized = kw.replace("-", " ").strip()
-        if not normalized:
-            continue
-        # Quote as phrase query
-        parts.append(f'"{normalized}"')
+        if normalized:
+            parts.append(f'"{normalized}"')
     return " OR ".join(parts)
 
 

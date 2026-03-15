@@ -82,7 +82,7 @@ class BuddyStatementDialog(QDialog):
 
         # Quick-fill inputs
         inputs_frame = QFrame()
-        inputs_frame.setStyleSheet("background: #f8f9fb; border-bottom: 1px solid #dde2e8;")
+        inputs_frame.setObjectName("dialog_input_frame")
         inputs_layout = QHBoxLayout(inputs_frame)
         inputs_layout.setContentsMargins(20, 12, 20, 12)
         inputs_layout.setSpacing(20)
@@ -137,7 +137,7 @@ class BuddyStatementDialog(QDialog):
 
         # Footer
         footer = QFrame()
-        footer.setStyleSheet("border-top: 1px solid #dde2e8; background: #f8f9fb;")
+        footer.setObjectName("dialog_footer")
         footer_layout = QHBoxLayout(footer)
         footer_layout.setContentsMargins(16, 10, 16, 10)
 

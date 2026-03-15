@@ -74,9 +74,7 @@ class ConditionsBrowserPanel(QWidget):
 
         # Filter / search bar
         filter_frame = QFrame()
-        filter_frame.setStyleSheet(
-            "background: #f8f9fb; border-bottom: 1px solid #dde2e8;"
-        )
+        filter_frame.setObjectName("filter_bar")
         filter_layout = QHBoxLayout(filter_frame)
         filter_layout.setContentsMargins(16, 10, 16, 10)
         filter_layout.setSpacing(12)
@@ -127,7 +125,7 @@ class ConditionsBrowserPanel(QWidget):
 
         # Legend
         legend = QFrame()
-        legend.setStyleSheet("background: #f0f6ff; border-bottom: 1px solid #dde2e8;")
+        legend.setObjectName("filter_bar")
         leg_layout = QHBoxLayout(legend)
         leg_layout.setContentsMargins(16, 6, 16, 6)
         leg_layout.setSpacing(16)
@@ -166,10 +164,9 @@ class ConditionsBrowserPanel(QWidget):
         self._table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         self._table.setAlternatingRowColors(True)
         self._table.setStyleSheet(
-            "QTableWidget { border: none; gridline-color: #ebebeb; font-size: 12px; }"
+            "QTableWidget { border: none; font-size: 12px; }"
             "QTableWidget::item { padding: 4px 6px; }"
-            "QHeaderView::section { background: #f5f7fa; border-bottom: 2px solid #dde2e8; "
-            "font-weight: bold; font-size: 11px; color: #555e6e; padding: 4px 6px; }"
+            "QHeaderView::section { font-weight: bold; font-size: 11px; padding: 4px 6px; }"
         )
         self._table.verticalHeader().setVisible(False)
         self._table.setShowGrid(True)
