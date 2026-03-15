@@ -11,6 +11,7 @@ Public API:
 """
 from __future__ import annotations
 import json
+from app.core.json_guard import parse_evidence_notes
 import html
 
 from PyQt6.QtWidgets import (
@@ -78,11 +79,7 @@ class EvidencePanel(QWidget):
             doc_type = row["doc_type"] or "Document"
             notes_raw = row["notes"] or "{}"
 
-            try:
-                notes = json.loads(notes_raw)
-            except Exception:
-                notes = {}
-
+            notes = parse_evidence_notes(notes_raw)
             pages = notes.get("pages", [])
             auto_detected = notes.get("auto_detected", False)
 
