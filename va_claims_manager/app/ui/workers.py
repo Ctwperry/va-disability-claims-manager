@@ -3,6 +3,7 @@ Qt background workers for long-running tasks (ingestion, search, export).
 Uses QRunnable + QThreadPool to keep the UI responsive.
 """
 from PyQt6.QtCore import QRunnable, QObject, pyqtSignal, pyqtSlot, QThreadPool
+from app.db.connection import close_connection
 
 
 class WorkerSignals(QObject):
@@ -41,6 +42,7 @@ class IngestionWorker(QRunnable):
             import traceback
             self.signals.error.emit(traceback.format_exc())
         finally:
+            close_connection()
             self.signals.finished.emit()
 
 
@@ -71,6 +73,7 @@ class SearchWorker(QRunnable):
             import traceback
             self.signals.error.emit(traceback.format_exc())
         finally:
+            close_connection()
             self.signals.finished.emit()
 
 
